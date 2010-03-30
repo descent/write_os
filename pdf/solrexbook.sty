@@ -1,0 +1,164 @@
+\def\filedate{2007/08/30}
+\def\fileversion{0.01}
+\NeedsTeXFormat{LaTeX2e}[1994/06/01]
+\ProvidesPackage{solrexbook}[\filedate\space\fileversion\space]
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Options
+%
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Loading packages
+%
+%
+\usepackage{ifpdf}
+\ifpdf
+  \usepackage[pdftex]{graphicx}
+  \graphicspath{{images/}}
+\else
+  \RequirePackage[dvipdfm, CJKbookmarks, bookmarks=true, bookmarksnumbered=true%
+                unicode,%
+             colorlinks,%
+         linkcolor=blue,%
+             hyperindex,%
+       plainpages=false,%
+      pdfstartview=FitH]{hyperref}
+  \AtBeginDvi{\special{pdf:tounicode UTF8-UCS2}}
+  \usepackage[dvipdfm]{graphicx}
+  \graphicspath{{images/}}
+  \DeclareGraphicsExtensions{.eps}
+\fi
+%
+%
+\RequirePackage{CJKutf8,CJKnumb,CJKulem}
+\RequirePackage{color,verbatim,cite}
+\RequirePackage{texnames,makeidx,indentfirst}
+\RequirePackage{amsmath,amssymb,amsfonts,bm,manfnt}
+\RequirePackage{fancyhdr,titlesec,datetime}
+\RequirePackage{wasysym,fancyvrb,longtable,multirow,bigstrut}
+\usepackage[section]{placeins}
+\usepackage[left=3.2cm,right=2.54cm,top=3.3cm,bottom=2.6cm,twoside]{geometry}
+\usepackage[caption=false,font=footnotesize]{subfig}
+%\usepackage{fixltx2e}
+%\usepackage{stfloats}
+
+%
+% we use CJK as default environment
+\AtBeginDocument{\begin{CJK*}{UTF8}{song}\CJKtilde\CJKindent\CJKcaption{utf8}}
+\AtEndDocument{\clearpage\end{CJK*}}
+%
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Modifing Styles
+%
+%
+\setlength{\parskip}{0.75ex plus .2ex minus .5ex}
+\renewcommand{\baselinestretch}{1.2}
+%
+% we use superscript numerical citation with brackets
+\def\@cite#1{\textsuperscript{[#1]}}
+%
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Redefine some commands and environments
+%
+%
+\newenvironment{lined}[1]%
+ {\begin{center}\begin{minipage}{#1}\hrule\medskip}
+ {\vspace{-1ex}\hrule \end{minipage}\end{center}}
+%
+% Marginal notes
+\newcommand{\MarginalNotes}[1]{%
+   \hskip 1sp \marginpar{\small\sffamily\raggedright #1}}
+%
+\DefineVerbatimEnvironment%
+{Codefrag}{Verbatim}
+{fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=4}%
+%
+\DefineVerbatimEnvironment%
+{Command}{Verbatim}
+{fontfamily=tt,fontsize=\footnotesize, xleftmargin=2em, frame=none, numbers=none}%
+
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Dangerous and doubly dangerous bends
+%
+%
+\newlength{\dbend@width}
+\newlength{\ddbend@width}
+\newlength{\dbend@voffset}
+\def\setdbend@width{%
+  \settowidth{\dbend@width}{\dbend}%
+  \setlength{\ddbend@width}{\dbend@width}%
+  \multiply\dbend@width by 2%
+  \multiply\ddbend@width by 3%
+  \advance\ddbend@width by 1pt%
+  \settoheight{\dbend@voffset}{\dbend}%
+  \multiply\dbend@voffset by 22%
+  \divide\dbend@voffset by 15%
+  \advance\dbend@voffset by -\baselineskip}
+%
+% This parts is hacked from TeXbook
+%
+\def\d@nger{\begingroup\clubpenalty=10000\def\par{\endgraf\endgroup}
+  \setdbend@width\noindent\hangindent\dbend@width\hangafter=-2
+  \lower-\dbend@voffset\hbox to0pt{\hskip-\hangindent\dbend\hfill}}
+%
+\def\dd@nger{\begingroup\clubpenalty=10000\def\par{\endgraf\endgroup}
+  \setdbend@width\noindent\hangindent\ddbend@width\hangafter=-2
+  \lower-\dbend@voffset\hbox to0pt{\hskip-\hangindent\dbend\kern1pt\dbend\hfill}}
+%
+\def\danger{\d@nger}
+\def\ddanger{\dd@nger}
+\def\enddanger{\endgraf\endgroup}
+%
+%
+\newenvironment{kaitext}{\CJKfamily{kai}}{\CJKfamily{song}}
+\newcommand{\code}[1]{\textbf{\textcolor[rgb]{0.2, 0.2, 0.2}{\tt{#1}}}}
+
+\newcommand{\BOXED}[2]
+{
+  \noindent\begin{center}\fbox{
+  \begin{minipage}[c]{#1}{#2}\end{minipage}
+  }\end{center}
+}
+
+\newcommand{\FIG}[3]
+{
+    \noindent\begin{figure}[htbp]
+	\centering
+    \includegraphics[width=#3,keepaspectratio]{#2}
+    \caption{\label{#2}#1}
+    \end{figure}
+}
+\makeatletter
+\newcommand\figcaption{\def\@captype{figure}\caption}
+\newcommand\codecaption{\def\@captype{figure}\caption}
+\newcommand\tabcaption{\def\@captype{table}\caption}
+\makeatother
+
+\newcommand{\FIGFIX}[3]
+{
+    \noindent\begin{minipage}{\textwidth}
+    \centering
+    \includegraphics[width=#3,keepaspectratio]{#2}
+    \figcaption{\label{#2}#1}
+    \end{minipage}
+}
+
+\renewcommand{\textfraction}{0.15}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\bottomfraction}{0.65}
+\renewcommand{\floatpagefraction}{0.60}
+
+% \newcounter{code}\setcounter{code}{1}
+% \makeatletter
+% \newcommand{\codecaption}[1] {\@makecaption{\codename~\arabic{chapter}-\arabic{code}}{#1} \addtocounter{code}{1}}
+% \makeatother
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+%
+\endinput
+%%
+%% End of file `solrexbook.sty'.

@@ -1,0 +1,547 @@
+\chapter{最小的“操作系统”} \label{CHsmall}
+
+任何一个完善的操作系统都是从启动扇区开始的，这一章，我们就关注如何写一个启动扇区，以及如何将其写入到软盘镜像中。
+
+先介绍一下需要使用的工具：
+\begin{itemize}
+\item{系统：} Cent OS 5.1(RHEL 5.1)
+\item{使用工具：} gcc, binutils(as, ld, objcopy), dd, make, hexdump, vim, virtualbox
+\end{itemize}
+
+\section{Hello OS world!}\label{hello_OS_world}
+
+\BOXED{0.9\textwidth}{
+\danger\\ 本章节内容需要和~gcc, make~相关的~Linux C~语言编程以及~PC~汇编语言的基础知识。\enddanger
+}
+
+\BOXED{0.9\textwidth}{
+\danger\\推荐预备阅读：CS:APP（Computer Systems: A Programmer's Perspective, 深入理解计算机系统）第~3~章：Machine-Level Representation of Programs。\enddanger
+}
+
+很多编程书籍给出的第一个例子往往是在终端里输出一个字符串“Hello world!”，那么要写操作系统的第一步给出的例子自然就是如何在屏幕上打印出一个字符串喽。所以，我们首先看《自己动手写操作系统》一书中给出的第一个示例代码，在屏幕上打印“Hello OS world!”：
+
+\begin{Codefrag}
+    org    07c00h       ; 告诉编译器程序加载到7c00处
+    mov    ax, cs
+    mov    ds, ax
+    mov    es, ax
+    call   DispStr      ; 调用显示字符串例程
+    jmp    $            ; 无限循环
+DispStr:
+    mov    ax, BootMessage
+    mov    bp, ax       ; ES:BP = 串地址
+    mov    cx, 16       ; CX = 串长度
+    mov    ax, 01301h   ; AH = 13,  AL = 01h
+    mov    bx, 000ch    ; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
+    mov    dl, 0
+    int    10h          ; 10h 号中断
+    ret
+BootMessage:     db    "Hello, OS world!"
+times 510-($-$$) db    0 ; 填充剩下的空间，使生成的二进制代码恰好为512字节
+dw    0xaa55             ; 结束标志
+\end{Codefrag}
+\codecaption{《自》第一个实例代码~boot.asm}\label{CHsmall_bootASM}
+
+\subsection{Intel~汇编转化为~AT\&T(GAS)~汇编}
+
+上面~boot.asm~中代码使用~Intel~风格的汇编语言写成，本也可以在~Linux~下使用同样开源的~NASM~编译，但是鉴于很少有人在~Linux~下使用此汇编语法，它在~Linux~平台上的扩展性和可调试性都不好（~GCC~不兼容），而且不是采用~Linux~平台上编译习惯，所以我把它改成了使用~GNU~工具链去编译连接。这样的话，对以后使用~GNU~工具链编写其它体系结构的~bootloader~也有帮助，毕竟~NASM~没有~GAS~用户多（也许~\smiley）。
+
+上面的汇编源程序可以改写成~AT\&T~风格的汇编源代码：
+
+\begin{Codefrag}
+.code16               #使用16位模式汇编
+.text                 #代码段开始
+    mov    %cs,%ax
+    mov    %ax,%ds
+    mov    %ax,%es
+    call   DispStr    #调用显示字符串例程
+    jmp    .          #无限循环
+DispStr:
+    mov    $BootMessage, %ax
+    mov    %ax,%bp        #ES:BP = 串地址
+    mov    $16,%cx        #CX = 串长度
+    mov    $0x1301,%ax    #AH = 13,  AL = 01h
+    mov    $0x00c,%bx     #页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
+    mov    $0,%dl
+    int    $0x10          #10h 号中断
+    ret
+BootMessage:.ascii "Hello, OS world!"
+.org 510             #填充到~510~字节处
+.word 0xaa55         #结束标志
+\end{Codefrag}
+\codecaption{boot.S(chapter2/1/boot.S)}\label{CHsmall_bootS}
+
+\subsection{用连接脚本控制地址空间}
+
+但有一个问题,我们可以使用~\code{nasm boot.asm -o boot.bin}~命令将~boot.asm~直接编译成二进制文件，~GAS~不能。不过~GAS~的不能恰好给开发者一个机会去分步地实现从汇编源代码到二进制文件这个过程，使编译更为灵活。下面请看~GAS~是如何通过连接脚本控制程序地址空间的：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../src/chapter2/1/solrex_x86.ld}
+\codecaption{boot.S~的连接脚本~(chapter2/1/solrex\_x86.ld)}\label{CHsmall_solrexLD}
+
+\BOXED{0.9\textwidth}{
+~~~~\textbf{连接脚本}~：~GNU~连接器~ld~的每一个连接过程都由连接脚本控制。连接脚本主要用于，怎样把输入文件内的~section~放入输出文件内，并且控制输出文件内各部分在程序地址空间内的布局。连接器有个默认的内置连接脚本，可以用命令~ld --verbose~查看。选项~-T~选项可以指定自己的连接脚本，它将代替默认的连接脚本。
+}
+
+这个连接脚本的功能就是，在连接的时候，将程序入口设置为内存~\code{0x7c00}~的位置（~BOIS~将跳转到这里继续启动过程），相当于~boot.asm~中的~org 07c00h~一句。有人可能觉得麻烦，还需要用一个脚本控制加载地址，但是《自己动手写操作系统》就给了一个很好的反例：《自》第~1.5~节代码~1-2~,作者切换调试和运行模式时候需要对代码进行注释。
+
+\begin{Codefrag}
+;%define _BOOT_DEBUG_   ; 做 Boot Sector 时一定将此行注释掉!将此行打开后用
+                        ; nasm Boot.asm -o Boot.com 做成一个.COM文件易于调试
+
+%ifdef _BOOT_DEBUG_
+    org  0100h     ; 调试状态, 做成 .COM 文件, 可调试
+%else
+    org  07c00h    ; Boot 状态, Bios 将把 Boot Sector 加载到 0:7C00 处并开始执行
+%endif
+
+    mov    ax, cs
+    mov    ds, ax
+    mov    es, ax
+    call   DispStr      ; 调用显示字符串例程
+    jmp    $            ; 无限循环
+DispStr:
+    mov    ax, BootMessage
+    mov    bp, ax       ; ES:BP = 串地址
+    mov    cx, 16       ; CX = 串长度
+    mov    ax, 01301h   ; AH = 13,  AL = 01h
+    mov    bx, 000ch    ; 页号为0(BH = 0) 黑底红字(BL = 0Ch,高亮)
+    mov    dl, 0
+    int    10h          ; 10h 号中断
+    ret
+BootMessage:     db    "Hello, OS world!"
+times 510-($-$$) db    0 ; 填充剩下的空间，使生成的二进制代码恰好为512字节
+dw    0xaa55             ; 结束标志
+\end{Codefrag}
+\codecaption{《自》代码~1-2~(chapter2/1/boot.asm)}\label{CHsmall_bootASM1}
+
+而如果换成使用脚本控制程序地址空间，只需要编译时候调用不同脚本进行连接，就能解决这个问题。这在嵌入式编程中是很常见的处理方式，即使用不同的连接脚本一次~make~从一个源程序文件生成分别运行在开发板上和软件模拟器上的两个二进制文件 。
+
+\subsection{用~Makefile~编译连接}
+
+下面的这个~Makefile~文件，就是我们用来自动编译~boot.S~汇编源代码的脚本文件：
+
+\begin{Codefrag}
+CC=gcc
+LD=ld
+LDFILE=solrex_x86.ld    #使用上面提供的连接脚本 solrex_x86.ld
+OBJCOPY=objcopy
+
+all: boot.img
+
+# Step 1: gcc 调用 as 将 boot.S 编译成目标文件 boot.o
+boot.o: boot.S
+        $(CC) -c boot.S
+
+# Step 2: ld 调用连接脚本 solrex_x86.ld 将 boot.o 连接成可执行文件 boot.elf
+boot.elf: boot.o
+        $(LD) boot.o -o boot.elf -e c -T$(LDFILE)
+
+# Step 3: objcopy 移除 boot.elf 中没有用的 section(.pdr,.comment,.note),
+#         strip 掉所有符号信息，输出为二进制文件 boot.bin 。
+boot.bin : boot.elf
+        @$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary boot.elf boot.bin
+
+# Step 4: 生成可启动软盘镜像。 
+boot.img: boot.bin
+        @dd if=boot.bin of=boot.img bs=512 count=1             #用 boot.bin 生成镜像文件第一个扇区
+        # 在 bin 生成的镜像文件后补上空白，最后成为合适大小的软盘镜像
+        @dd if=/dev/zero of=boot.img skip=1 seek=1 bs=512 count=2879
+
+clean:
+        @rm -rf boot.o boot.elf boot.bin boot.img
+\end{Codefrag}
+\codecaption{boot.S~的~Makefile(chapter2/1/Makefile)}\label{CHsmall_Makefile}
+
+我们将上面内容保存成~Makefile~，与图~\ref{CHsmall_bootS}~所示~boog.S~和图~\ref{CHsmall_solrexLD}~所示~solrex\_x86.ld~放在同一个目录下，然后在此目录下使用下面命令编译：
+
+\begin{Command}
+$ make
+gcc -c boot.S 
+ld boot.o -o boot.elf -Tsolrex_x86.ld
+1+0 records in
+1+0 records out
+512 bytes (512 B) copied, 3.1289e-05 seconds, 16.4 MB/s
+2879+0 records in
+2879+0 records out
+1474048 bytes (1.5 MB) copied, 0.0141508 seconds, 104 MB/s
+$ ls
+boot.asm  boot.elf  boot.o  Makefile    solrex_x86.ld
+boot.bin  boot.img  boot.S  solrex.img
+\end{Command}
+
+可以看到，我们只需执行一条命令~\code{make}~就可以编译、连接和直接生成可启动的软盘镜像文件，其间对源文件的每一步处理也都一清二楚。不用任何商业软件，也不用自己写任何转换工具，比如《自己动手写操作系统》文中提到的~HD-COPY~和~Floopy Writer~都没有使用到。 
+
+在这里需要特别注意的是图~\ref{CHsmall_Makefile}~中的~Step 4，其实对这一步的解释应该结合图~\ref{bootsector1}~来查看。我们用~boot.S~编译生成的~boot.bin~其实只是图~\ref{bootsector1}~中所指的软盘的启动扇区，例如~boot.S~最后一行：
+\begin{Command}
+.word 0xaa55         #结束标志
+\end{Command}
+生成就是启动扇区最后的~\code{0xaa55}~那两个字节，而~boot.bin~的大小是~512~字节，正好是启动扇区的大小。那么~Step 4~的功能就是把~boot.bin~放入到一个空白软盘的启动扇区，这样呢当虚拟机启动时能识别出这是一张可启动软盘，并且执行我们在启动扇区中写入的打印代码。
+
+为了验证软盘镜像文件的正确性也可以先用
+\begin{Command}
+$ hexdump -x -n 512 boot.img
+\end{Command}
+将~boot.img~前~512~个字节打印出来，可以看到~boot.img dump~的内容和《自》一书附送光盘中的~TINIX.IMG dump~的内容完全相同。
+这里我们也显然用不到~EditPlus~或者~UltraEdit~，即使需要修改二进制码，也可以使用~hexedit, ghex2, khexedit~等工具对二进制文件进行修改。
+
+下图为使用命令行工具~hexedit~打开~boot.img~的窗口截图，从图中我们可以看到，左列是该行开头与文件头对应的偏移地址，中间一列是文件的二进制内容，最右列是文件内容的~ASCII~显示内容，可以看到，此界面与~UltraEdit~的十六进制编辑界面没有本质不同。
+
+\FIGFIX{使用~hexedit~打开~boot.img}{hexedit}{0.75\textwidth}
+
+\FIGFIX{使用~kde~图形界面工具~khexedit~打开~boot.img}{khexedit}{0.75\textwidth}
+
+\subsection{用虚拟机加载执行~boot.img}
+
+当我们生成~boot.img~之后，仿照第~\ref{CHboot_fboot}~节中加载软盘镜像的方法，用虚拟机加载~boot.img:\\
+\FIGFIX{选择启动软盘镜像~boot.img}{vb_set_6}{0.75\textwidth}
+
+\FIGFIX{虚拟机启动后打印出红色的“Hello OS world!”}{vb_run_2}{0.75\textwidth}
+
+我们看到虚拟机如我们所料的打印出了红色的“Hello OS world!”字样，这说明我们以上的程序和编译过程是正确的。
+
+\section{FAT~文件系统}
+
+我们在上一节中介绍的内容，仅仅是写一个启动扇区并将其放入软盘镜像的合适位置。由于启动扇区~512~字节的大小限制，我们仅仅能写入像打印一个字符串这样的非常简单的程序，那么如何突破~512~字节的限制呢？很显然的答案是我们要利用其它的扇区，将程序保存在其它扇区，运行前将其加载到内存后再跳转过去执行。那么又一个问题产生了：程序在软盘上应该怎样存储呢？
+
+可能最直接最容易理解的存储方式就是顺序存储，即将一个大程序从启动扇区开始按顺序存储在相邻的扇区，可能这样需要的工作量最小，在启动时操作系统仅仅需要序列地将可执行代码拷贝到内存中来继续运行。可是经过简单的思考我们就可以发现这样做有几个缺陷：1. 软盘中仅能存储操作系统程序，无法存储其它内容；2. 我们必须使用二进制拷贝方式来制作软盘镜像，修改系统麻烦。
+
+那么怎么避免这两个缺点呢？引入文件系统可以让我们在一张软盘上存储不同的文件，并提供文件管理功能，可以让我们避免上述的两个缺点。在使用某种文件系统对软盘格式化之后，我们可以像普通软盘一样使用它来存储多个文件和目录，为了使用软盘上的文件，我们给启动扇区的代码加上寻找文件和加载执行文件功能，让启动扇区将系统控制权转移给软盘上的某个文件，这样突破启动扇区~512~字节大小的限制。
+
+\subsection{FAT12~文件系统}
+
+FAT(File Allocation Table)~文件系统规格在~20~世纪~70~年代末和~80~年代初形成，是微软的~MS-DOS~操作系统使用的文件系统格式。它的初衷是为小于~500K~容量的软盘制定的简单文件系统，但在将近三十年的发展过程中，它已经被一次次修改加强以支持更大的存储媒体。在目前主要有三种~FAT~文件系统类型：FAT12, FAT16~和~FAT32。这几种类型最基本的区别就像它们的名字字面区别一样，主要在于大小，即盘上~FAT~表的记录项所占的比特数。FAT12~的记录项占~12~比特，FAT16~占~16~比特，FAT32~占~32~比特。
+
+由于~FAT12~最为简单和易实施，这里我们仅简单介绍~FAT12~文件系统，想要了解更多~FAT~文件系统知识的话，可以到~\url{http://www.microsoft.com/whdc/system/platform/firmware/fatgen.mspx}~下载微软发布的~FAT~文件系统官方文档。
+
+FAT12~文件系统和其它文件系统一样，都将磁盘划分为层次进行管理。从逻辑上划分，一般将磁盘划分为盘符，目录和文件；从抽象物理结构来讲，将磁盘划分为分区，簇和扇区。那么，如何将逻辑上的目录和文件映射到物理上实际的簇和扇区，就是文件系统要解决的问题。
+
+如果让虚拟机直接读取我们上一节生成的可启动软盘镜像，或者将~boot.img~软盘用~\code{mount -o loop boot.img mountdir/}~挂载到某个目录上，系统肯定会报出“软盘未格式化”或者“文件格式不可识别”的错误。这是因为任何系统可读取的软盘都是被格式化过的，而我们的~boot.img~是一个非常原始的软盘镜像。那么如何才能使软盘被识别为~FAT12~格式的软盘并且可以像普通软盘一样存取呢？
+
+系统在读取一张软盘的时候，会读取软盘上存储的一些关于文件系统的信息，软盘格式化的过程也就是系统把文件系统信息写入到软盘上的过程。但是我们不能让系统来格式化我们的~boot.img~，如果那样的话，我们写入的启动程序也会被擦除。所以呢，我们需要自己对软盘进行格式化。\blacksmiley 可能有人看到这里就会很沮丧，天那，那该有多麻烦啊！不过我相信在读完以下内容以后你会欢呼雀跃，啊哈，原来文件系统挺简单的嘛！
+
+\subsection{启动扇区与~BPB}
+
+FAT~文件系统的主要信息，都被提供在前几个扇区内，其中第~0~号扇区尤其重要。在这个扇区内隐藏着一个叫做~BPB(BIOS Parameter Block)~的数据结构，一旦我们把这个数据结构写对了，格式化过程也基本完成了 \smiley。下面这个表中所示内容，主要就是启动扇区的~BPB~数据结构。
+
+\texttt{
+\begin{center}\begin{longtable}{l|c|c|l|l}
+\caption[]{启动扇区的~BPB~数据结构和其它内容}\label{bootsec_BPB}\\
+\hline
+名称 &偏移 &大小 & 描述 & Solrex.img\\
+     &bytes&bytes&      & 文件中的值\\
+\hline
+BS\_jmpBoot     & 0  &  3 & 跳转指令，用于跳过以下的扇区信息        & jmp LABEL\_START \\
+                &    &    &                                         & nop \\
+\hline
+BS\_OEMName     &  3 &  8 & 厂商名                                  & "WB. YANG"\\
+\hline
+BPB\_BytesPerSec& 11 &  2 & 扇区大小（字节），应为 512              & 512\\
+\hline
+BPB\_secPerClus & 13 &  1 & 簇的扇区数，应为 2 的幂，FAT12 为 1     & 1\\
+\hline
+BPB\_RsvdSecCnt & 14 &  2 & 保留扇区，FAT12/16 应为 1               & 1\\
+\hline
+BPB\_NumFATs    & 16 &  1 & FAT 结构数目，一般为 2                  & 2\\
+\hline
+BPB\_RootEntCnt & 17 &  2 & 根目录项目数，FAT12 为 224              & 224\\
+\hline
+BPB\_TotSec16   & 19 &  2 & 扇区总数，1.44M 软盘为 2880             & 2880\\
+\hline
+BPB\_Media      & 21 &  1 & 设备类型，1.44M 软盘为 F0h              & 0xf0\\
+\hline
+BPB\_FATSz16    & 22 &  2 & FAT 占用扇区数，9                       & 9\\
+\hline
+BPB\_SecPerTrk  & 24 &  2 & 磁道扇区数，18                          & 18\\
+\hline
+BPB\_NumHeads   & 26 &  2 & 磁头数，2                               & 2\\
+\hline
+BPB\_HiddSec    & 28 &  4 & 隐藏扇区，默认为 0                      & 0\\
+\hline
+BPB\_TotSec32   & 32 &  4 & 如果~BPB\_TotSec16~为~0，它记录总扇区数 & 0\\
+\hline
+\multicolumn{5}{c}{下面的扇区头信息~FAT12/FAT16~与~FAT32 不同}\\
+\hline
+BS\_DrvNum      & 36 &  1 & 中断~0x13~的驱动器参数，0~为软盘        & 0\\
+\hline
+BS\_Reserved1   & 37 &  1 & Windows NT 使用，0                      & 0\\
+\hline
+BS\_BootSig     & 38 &  1 & 扩展引导标记~(29h)，指明此后~3~个域可用 & 0x29\\
+\hline
+BS\_VolID       & 39 &  4 & 卷标序列号，00000000h                   & 0\\
+\hline
+BS\_VolLab      & 43 & 11 & 卷标，11 字节，必须用空格 20h 补齐      & "Solrex 0.01"\\
+\hline
+BS\_FilSysType  & 54 &  8 & 文件系统标志，"FAT12~~~"                & "FAT12~~~"\\
+\hline
+\multicolumn{5}{c}{以下为非扇区头信息部分}\\
+\hline
+启动代码及其它  & 62 & 448 & 启动代码、数据及填充字符               & mov \%cs,\%ax...\\
+\hline
+启动扇区标识符  & 510 &  2 & 可启动扇区标志，0xAA55                 & 0xaa55\\
+\hline
+\end{longtable}\end{center}
+}
+
+哇，天那，这个~BPB~看起来很多东西的嘛，怎么写啊？其实写入这些信息很简单，因为它们都是固定不变的内容，用下面的代码就可以实现。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=21, lastline=45]{../src/chapter2/2/boot.S}
+\codecaption{生成启动扇区头的汇编代码(节自 chapter2/2/boot.S)}\label{CHsmall_bootS1}
+
+在上面的汇编代码中，我们只是顺序地用字符填充了启动扇区头的数据结构，填充的内容与表~\ref{bootsec_BPB}~中最后一列的内容相对应。把图~\ref{CHsmall_bootS1}~中所示代码添加到图~\ref{CHsmall_bootS}~的第二行和第三行之间，然后再~make~，就能得到一张已经被格式化，可启动也可存储文件的软盘，就是既可以使用~\code{mount -o loop boot.img mountdir/}~命令在普通~Linux~系统里挂载，也可用作虚拟机启动的软盘镜像文件。
+
+\subsection{FAT12~数据结构}
+
+在上一个小节里，我们制作出了可以当作普通软盘使用的启动软盘，这样我们就可以在这张软盘上存储多个文件了。可还有一步要求我们没有达到，怎样寻找存储的某个引导文件并将其加载到内存中运行呢？这就涉及到~FAT12~文件系统中文件的存储方式了，需要我们了解一些~FAT~数据结构和目录结构的知识。
+
+FAT~文件系统对存储空间分配的最小单位是“簇”，因此文件在占用存储空间时，基本单位是簇而不是字节。即使文件仅仅有~1~字节大小，系统也必须分给它一个最小存储单元——簇。由表~\ref{bootsec_BPB}~中的~BPB\_secPerClus~和~BPB\_BytsPerSec~相乘可以得到每簇所包含的字节数，可见我们设置的是每簇包含~1*512=512~个字节，恰好是每簇包含一个扇区。
+
+存储空间分配的最小单位确定了，那么~FAT~是如何分配和管理这些存储空间的呢？~FAT~的存储空间管理是通过管理~FAT~表来实现的，~FAT~表一般位于启动扇区之后，根目录之前的若干个扇区，而且一般是两个表。从根目录区的下一个簇开始，每个簇按照它在磁盘上的位置映射到~FAT~表里。FAT~文件系统的存储结构粗略上来讲如图~\ref{fat_map}~所示。
+
+\FIG{FAT~文件系统存储结构图}{fat_map}{5cm}
+
+FAT~表的表项有点儿像数据结构中的单向链表节点的~next~指针，先回忆一下，单向链表节点的数据结构（C~语言）是：
+
+\begin{Command}
+struct node {
+  char * data;
+  struct node *next;
+};
+\end{Command}
+在链表中，~next~指针指向的是下一个相邻节点。那么~FAT~表与链表有什么区别呢？首先，~FAT~表将~next~指针集中管理，放在一起被称为~FAT~表；其次，~FAT~表项指向的是固定大小的文件“簇”(data~段)，而且每个文件簇都有自己对应的~FAT~表项。由于每个文件簇都有自己的~FAT~表项，这个表项可能指向另一个文件簇，所以~FAT~表项所占字节的多少就决定了~FAT~表最大能管理多少内存，~FAT12~的~FAT~表项有~12~个比特，大约能管理~$2^{12}-$~个文件簇。
+
+一个文件往往要占据多个簇，只要我们知道这个文件的第一个簇，就可以到~FAT~表里查询该簇对应的~FAT~表项，该表项的内容一般就是此文件下一个簇号。如果该表项的值大于~\code{0xff8}~，则表示该簇是文件最后一个簇，相当于单向链表节点的~next~指针为~NULL；如果该表项的值是~\code{0xff7}~则表示它是一个坏簇。这就是~\textbf{文件的链式存储}~。
+
+\subsection{FAT12~根目录结构}
+
+怎样读取一个文件我们知道了，但是如何找到某个文件，即如何得到该文件对应的第一个簇呢？这就到目录结构派上用场的时候了，为了简单起见，我们这里只介绍根目录结构。
+
+如图~\ref{fat_map}~所示，对于~FAT12/16，根目录存储在磁盘中固定的地方，紧跟在最后一个~FAT~表之后。根目录的扇区数也是固定的，可以根据~BPB\_RootEntCnt~计算得出：
+\begin{Command}
+RootDirSectors = ((BPB_RootEntCnt * 32) + (BPB_BytesPerSec - 1)) / BPB_BytsPerSec
+\end{Command}
+根目录的扇区号是相对于该~FAT~卷启动扇区的偏移量：
+\begin{Command}
+FirstRootDirSecNum = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz16)
+\end{Command}
+
+FAT~根目录其实就是一个由~32-bytes~的线性表构成的“文件”，其每一个条目代表着一个文件，这个~32-bytes~目录项的格式如图~\ref{fat12_root}~所示。
+
+\texttt{
+\begin{center}\begin{longtable}{l|c|c|l|l}
+\caption[]{根目录的条目格式}\label{fat12_root}\\
+\hline
+名称 & 偏移(bytes) & 长度(bytes) & 描述 & 举例(loader.bin)\\
+\hline
+DIR\_Name     & 0    & 0xb & 文件名~8~字节，扩展名~3~字节 & "LOADER□□BIN"\\
+\hline
+DIR\_Attr     & 0xb  & 1  & 文件属性 & 0x20\\
+\hline
+保留位        & 0xc  & 10 & 保留位   & 0\\
+\hline
+DIR\_WrtTime  & 0x16 & 2  & 最后一次写入时间 & 0x7a5a\\
+\hline
+DIR\_WrtDate  & 0x18 & 2  & 最后一次写入日期 & 0x3188\\
+\hline
+DIR\_FstClus  & 0x1a & 2  & 此目录项的开始簇编号 & 0x0002\\
+\hline
+DIR\_FileSize & 0x1c & 4  & 文件大小 & 0x000000f\\
+\hline
+\end{longtable}\end{center}
+}
+
+知道了这些，我们就得到了足够的信息去在磁盘上寻找某个文件，在磁盘根目录搜索并读取某个文件的步骤大致如下：
+
+\begin{enumerate}
+\item 确定根目录区的开始扇区和结束扇区；
+\item 遍历根目录区，寻找与被搜索名相对应根目录项；
+\item 找到该目录项对应的开始簇编号；
+\item 以文件的开始簇为根据寻找整个文件的链接簇，并依次读取每个簇的内容。
+\end{enumerate}
+
+\section{让启动扇区加载引导文件}
+
+有了~FAT12~文件系统的相关知识之后，我们就可以跨越~512~字节的限制，从文件系统中加载文件并执行了。
+
+\subsection{一个最简单的~loader}
+
+为做测试用，我们写一个最小的程序，让它显示一个字符，然后进入死循环，这样如果~loader~加载成功并成功执行的话，就能看到这个字符。
+
+新建一个文件~loader.S，内容如图~\ref{CHsmall_loaderS}~所示。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../src/chapter2/2/loader.S}
+\codecaption{一个最简单的~loader(chapter2/2/loader.S)}\label{CHsmall_loaderS}
+
+这个程序在连接时需要使用连接文件~solrex\_x86\_dos.ld，如图~\ref{CHsmall_solrexLD1}~所示，这样能更改代码段的偏移量为~\code{0x0100}。这样做的目的仅仅是为了与~DOS~系统兼容，可以用此代码生成在~DOS~下可调试的二进制文件。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../src/chapter2/2/solrex_x86_dos.ld}
+\codecaption{一个最简单的~loader(chapter2/2/solrex\_x86\_dos.ld)}\label{CHsmall_solrexLD1}
+
+\subsection{读取软盘扇区的~BIOS 13h~号中断}
+
+我们知道了如何在磁盘上寻找一个文件，但是该如何将磁盘上内容读取到内存中去呢？我们在第~\ref{hello_OS_world}~节中写的启动扇区不需要自己写代码来读取，是因为它每次都被加载到内存的固定位置，计算机在发现可启动标识~\code{0xaa55}~的时候自动就会做加载工作。但如果我们想自己从软盘上读取文件的时候，就需要使用到底层~BIOS~系统提供的磁盘读取功能了。这里，我们主要用到~BIOS 13h~号中断。
+
+表~\ref{bios_13}~所示，就是~BIOS 13~号中断的参数表。从表中我们可以看到，读取磁盘驱动器所需要的参数是磁道（柱面）号、磁头号以及当前磁道上的扇区号三个分量。由第~\ref{disk_structure}~节所介绍的磁盘知识，我们可以得到计算这三个分量的公式~\ref{sec_cal}~。
+
+\begin{equation}\label{sec_cal}
+\frac{\mbox{扇区号}}{18(\mbox{每磁道扇区数})} =
+  \begin{cases}
+    \mbox{商~Q} = \begin{cases}
+	  \mbox{柱面号} = Q~>>~1\\
+	  \mbox{磁头号} = Q~\&~1\\
+	\end{cases}\\
+	\mbox{余数~R} \Longrightarrow \mbox{~起始扇区号} = R + 1\\
+  \end{cases}
+\end{equation}
+
+\texttt{
+\begin{center}\begin{longtable}{c|c|l|l|l}
+\caption[]{BIOS 13h~号中断的参数表}\label{bios_13}\\
+\hline
+中断号 & AH & 功能 & 调用参数 & 返回参数\\
+\hline
+\multirow{21}[42]{*}{13} & 0 & 磁盘复位 & DL = 驱动器号 & 失败：\\
+   &   &  & 00, 01 为软盘，80h, 81h，$\cdots$~为硬盘 & AH = 错误码\bigstrut\\
+\cline{2-5}
+ &1 & 读磁盘驱动器状态 & & AH=状态字节\bigstrut\\
+\cline{2-5}
+   & 2 & 读磁盘扇区 & AL = 扇区数 & 读成功：\\
+   &   &            & $(CL)_{6,7}(CH)_{0 \sim 7}=$~柱面号 & AH = 0\\
+   &   &            & $(CL)_{0 \sim 5}=$~扇区号 & AL = 读取的扇区数\\
+   &   &            & DH/DL = 磁头号/驱动器号 & 读失败：\\
+   &   &            & ES:BX = 数据缓冲区地址 & AH = 错误码\bigstrut\\
+\cline{2-5}
+   & 3 & 写磁盘扇区 & 同上 & 写成功：\\
+   &   &            &   & AH = 0\\
+   &   &            &  & AL = 写入的扇区数\\
+   &   &            &  & 写失败：\\
+   &   &            &  & AH = 错误码\bigstrut\\
+\cline{2-5}
+   & 4 & 检验磁盘扇区 & AL = 扇区数 & 成功：\\
+   &   &            & $(CL)_{6,7}(CH)_{0 \sim 7}=$~柱面号 & AH = 0\\
+   &   &            & $(CL)_{0 \sim 5}=$~扇区号 & AL = 检验的扇区数\\
+   &   &            & DH/DL = 磁头号/驱动器号 & 失败：AH = 错误码\bigstrut\\
+\cline{2-5}
+   & 5 & 格式化盘磁道 & AL = 扇区数 & 成功：\\
+   &   &            & $(CL)_{6,7}(CH)_{0 \sim 7}=$~柱面号 & AH = 0\\
+   &   &            & $(CL)_{0 \sim 5}=$~扇区号 & 失败：\\
+   &   &            & DH/DL = 磁头号/驱动器号 & AH = 错误码\\
+   &   &            & ES:BX = 格式化参数表指针 & \\
+\hline
+\end{longtable}\end{center}
+}
+
+知道了这些，我们就可以写一个读取软盘扇区的子函数了：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=209, lastline=246]{../src/chapter2/2/boot.S}
+\codecaption{读取软盘扇区的函数(节自 chapter2/2/boot.S)}\label{CHsmall_readsec}
+
+\subsection{搜索~loader.bin}
+
+读取扇区的子函数写好了，下面我们编写在软盘中搜索~loader.bin~的代码：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=62, lastline=140]{../src/chapter2/2/boot.S}
+\codecaption{搜索~loader.bin~的代码片段(节自 chapter2/2/boot.S)}\label{CHsmall_findloader}
+
+这段代码的功能就是我们前面提到过的，遍历根目录的所有扇区，将每个扇区加载入内存，然后从中寻找文件名为~loader.bin~的条目，直到找到为止。找到之后，计算出~loader.bin~的起始扇区号。其中用到的变量和字符串的定义见图~\ref{CHsmall_variables}~中代码片段的定义。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=12, lastline=18]{../src/chapter2/2/boot.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=174, lastline=190]{../src/chapter2/2/boot.S}
+\codecaption{搜索~loader.bin~使用的变量定义(节自 chapter2/2/boot.S)}\label{CHsmall_variables}
+
+由于在代码中有一些打印工作，我们写了一个函数专门做这项工作。为了节省代码长度，被打印字符串的长度都设置为~9~字节，不够则用空格补齐，这样就相当于一个备用的二维数组，通过数字定位要打印的字符串，很方便。打印字符串的函数~DispStr~见图~\ref{CHsmall_DispStr}~，调用它的时候需要从寄存器~dh~传入参数字符串序号。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=190, lastline=208]{../src/chapter2/2/boot.S}
+\codecaption{打印字符串函数~DispStr~(节自 chapter2/2/boot.S)}\label{CHsmall_DispStr}
+
+\subsection{加载~loader~入内存}
+
+在寻找到~loader.bin~之后，就需要把它装入内存。现在我们已经有了~loader.bin~的起始扇区号，利用这个扇区号可以做两件事：一，把起始扇区装入内存；二，通过它找到~FAT~中的条目，从而找到~loader.bin~文件所占用的其它扇区。
+
+这里，我们把~loader.bin~装入内存中的~BaseOfLoader:OffsetOfLoader~处，但是在图~\ref{CHsmall_findloader}~中我们将根目录区也是装载到这个位置。因为在找到~loader.bin~之后，该内存区域对我们已经没有用处了，所以它尽可以被覆盖。
+
+我们已经知道了如何装入一个扇区，但是从~FAT~表中寻找其它的扇区还是一件麻烦的事情，所以我们写了一个函数~GetFATEntry~来专门做这件事情，函数的输入是扇区号，输出是其对应的~FAT~项的值，见图~\ref{CHsmall_GetFATEntry}。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=246, lastline=291]{../src/chapter2/2/boot.S}
+\codecaption{寻找~FAT~项的函数~GetFATEntry~(节自 chapter2/2/boot.S)}\label{CHsmall_GetFATEntry}
+
+这里有一个对扇区号判断是奇是偶的问题，因为~FAT12~的每个表项是~12~位，即~1.5~个字节，而我们这里是用字（2~字节）来读每个表项的，那么读到的表项可能在高~12~位或者低~12~位，就要用扇区号的奇偶来判断应该取哪~12~位。由于扇区号*3/2~的商就是对应表项的偏移量，余数代表着是否多半个字节，如果存在余数~1~，则取高~12~位为表项值；如果余数为~0，则取低~12~位作为表项值。举个具体的例子，下面是一个真实的~FAT12~表项内容（两行是分别用字节和字来表示的结果）：
+\begin{Command}
+0000200: 00 00 00 00 40 00 FF 0F
+0000200:  0000  0000  0040  0FFF
+\end{Command}
+我们来找扇区号~3~对应的~FAT12~表项。3*3/2 = 4...1，按照字来读取偏移~4~对应的地址，我们得到~0040。由于扇区号~3~是奇数，有余数，则应取高~12~位作为~FAT12~表项内容，将~0040~右移~4~位再算术与~0x0fff，我们得到~0x0004，即为对应的~FAT12~表项，说明扇区号~3~的后继扇区号是~4~。
+
+然后，我们就可以将~loader.bin~整个文件加载到内存中去了，见图~\ref{CHsmall_load}。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=140, lastline=168]{../src/chapter2/2/boot.S}
+\codecaption{加载~loader.bin~的代码(节自 chapter2/2/boot.S)}\label{CHsmall_load}
+
+在图~\ref{CHsmall_load}~中我们看到一个宏~DeltaSectorNo~，这个宏就是为了将~FAT~中的簇号转换为扇区号。由于根目录区的开始扇区号是~19~，而~FAT~表的前两个项~0,1~分别是磁盘识别字和被保留，其表项其实是从第~2~项开始的，第~2~项对应着根目录区后的第一个扇区，所以扇区号和簇号的对应关系就是：
+
+\begin{align*}
+\mbox{扇区号}~&=~\mbox{簇号~+~根目录区占用扇区数~+~根目录区开始扇区号~-~2}\\
+ &=~\mbox{簇号~+~根目录区占用扇区数~+~17}
+\end{align*}
+
+这就是~DeltaSectorNo~的值~17~的由来。
+
+\subsection{向~loader~转交控制权}
+
+我们已经将~loader~成功地加载入了内存，然后就需要进行一个跳转，来执行~loader~。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=168, lastline=174]{../src/chapter2/2/boot.S}
+\codecaption{跳转到~loader~执行(节自 chapter2/2/boot.S)}\label{CHsmall_jump}
+
+\subsection{生成镜像并测试} \label{CHsmall_test}
+
+我们写好了汇编源代码，那么就需要将源代码编译成可执行文件，并生成软盘镜像了。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11, lastline=42]{../src/chapter2/2/Makefile}
+\codecaption{用~Makefile~编译(节自 chapter2/2/Makefile)}\label{CHsmall_compile}
+
+上面的代码比较简单，我们可以通过一个~make~命令编译生成~boot.img~和~LOADER.BIN~：
+
+\begin{Command}
+$ make
+gcc -c boot.S
+ld boot.o -o boot.elf -Tsolrex_x86_boot.ld
+objcopy -R .pdr -R .comment -R.note -S -O binary boot.elf boot.bin
+1+0 records in
+1+0 records out
+512 bytes (512 B) copied, 3.5761e-05 s, 14.3 MB/s
+2879+0 records in
+2879+0 records out
+1474048 bytes (1.5 MB) copied, 0.0132009 s, 112 MB/s
+gcc -c loader.S
+ld loader.o -o loader.elf -Tsolrex_x86_dos.ld
+objcopy -R .pdr -R .comment -R.note -S -O binary loader.elf LOADER.BIN
+#################################################################
+# Compiling work finished, now you can use "sudo make copy" to
+# copy LOADER.BIN into boot.img
+#################################################################
+\end{Command}
+
+由于我们的目标就是让启动扇区加载引导文件，所以需要把引导文件放入软盘镜像中。那么如何将~LOADER.BIN~放入~boot.img~中呢？我们只需要挂载~boot.img~并将~LOADER.BIN~拷贝进入被挂载的目录，为此我们在~Makefile~中添加新的编译目标~copy~：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=42, lastline=51]{../src/chapter2/2/Makefile}
+\codecaption{拷贝~LOADER.BIN~入~boot.img(节自 chapter2/2/Makefile)}\label{CHsmall_copy}
+
+由于挂载软盘镜像在很多~Linux~系统上需要~root~权限，所以我们没有将~copy~目标添加到~all~的依赖关系中。在执行~make copy~命令之前我们必须先获得~root~权限。
+
+\begin{Command}
+$ su
+Password: 
+# make copy
+mkdir -p /tmp/floppy;\
+        mount -o loop boot.img /tmp/floppy/ -o fat=12;\
+        cp LOADER.BIN /tmp/floppy/;\
+        umount /tmp/floppy/;\
+        rm -rf /tmp/floppy/;
+\end{Command}
+
+如果仅仅生成~boot.img~而不将~loader.bin~装入它，用这样的软盘启动会显示找不到~LOADER：\\
+\FIGFIX{没有装入~LOADER.BIN~的软盘启动}{vb_run_3}{0.75\textwidth}
+
+装入~loader.bin~之后再用~boot.img~启动，我们看到虚拟机启动并在屏幕中间打印出了一个字符~"L"~，这说明我们前面的工作都是正确的。\\
+\FIGFIX{装入了~LOADER.BIN~以后再启动}{vb_run_4}{0.75\textwidth}
+

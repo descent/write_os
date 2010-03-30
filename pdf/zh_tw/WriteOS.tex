@@ -1,0 +1,54 @@
+\def\docversion{2}
+\documentclass{book}
+\usepackage{solrexbook}[2007/08/30]
+
+
+% 设置 PDF 文件属性
+\hypersetup {
+    pdftitle={使用开源软件-自己动手写操作系统},
+    pdfauthor={杨文博}%,
+}
+
+\makeindex
+
+\begin{document}
+
+\def\BookName{使用开源软件-自己动手写操作系统} 
+
+\pagestyle{empty}
+\include{000-cover}
+\cleardoublepage
+
+\pagecolor[rgb]{.9,.9,.9}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\small\bfseries\thepage}
+\fancyhead[LO]{\small\bfseries\nouppercase{\leftmark}}
+\fancyhead[RE]{\small\bfseries\nouppercase{\rightmark}}
+\renewcommand{\headrulewidth}{0pt}
+
+\titleformat{\chapter}[display]
+{\bfseries\Large}
+{\filleft\MakeUppercase{\chaptertitlename} \Huge\thechapter}
+{4ex}
+{\titlerule
+\vspace{2ex}%
+\filright}
+[\vspace{2ex}%
+\titlerule]
+
+\frontmatter
+\include{000-foreword}
+\tableofcontents
+\listoffigures
+\include{000-preface}
+
+
+
+\mainmatter
+\include{001}
+\include{002}
+\include{003}
+\include{004}
+
+\end{document}
