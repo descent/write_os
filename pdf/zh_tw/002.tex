@@ -25,7 +25,7 @@
     mov    ax, cs
     mov    ds, ax
     mov    es, ax
-    call   DispStr      ; 調用顯示字符串例程
+    call   DispStr      ; 呼叫顯示字符串例程
     jmp    $            ; 無限循環
 DispStr:
     mov    ax, BootMessage
@@ -54,7 +54,7 @@ dw    0xaa55             ; 結束標志
     mov    %cs,%ax
     mov    %ax,%ds
     mov    %ax,%es
-    call   DispStr    #調用顯示字符串例程
+    call   DispStr    #呼叫顯示字符串例程
     jmp    .          #無限循環
 DispStr:
     mov    $BootMessage, %ax
@@ -71,18 +71,18 @@ BootMessage:.ascii "Hello, OS world!"
 \end{Codefrag}
 \codecaption{boot.S(chapter2/1/boot.S)}\label{CHsmall_bootS}
 
-\subsection{用連接腳本控制位址空間}
+\subsection{用~linker script~控制位址空間}
 
-但有一個問題,我們可以使用~\code{nasm boot.asm -o boot.bin}~命令將~boot.asm~直接編譯成二進制檔案, ~GAS~不能。不過~GAS~的不能恰好給開發者一個機會去分步地實現從匯編源代碼到二進制檔案這個過程, 使編譯更為靈活。下面請看~GAS~是如何通過連接腳本控制程序位址空間的：
+但有一個問題,我們可以使用~\code{nasm boot.asm -o boot.bin}~命令將~boot.asm~直接編譯成二進制檔案, ~GAS~不能。不過~GAS~的不能恰好給開發者一個機會去分步地實現從匯編源代碼到二進制檔案這個過程, 使編譯更為靈活。下面請看~GAS~是如何通過~linker script~控制程序位址空間的：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../../src/chapter2/1/solrex_x86.ld}
-\codecaption{boot.S~的連接腳本~(chapter2/1/solrex\_x86.ld)}\label{CHsmall_solrexLD}
+\codecaption{boot.S~的~linker script~(chapter2/1/solrex\_x86.ld)}\label{CHsmall_solrexLD}
 
 \BOXED{0.9\textwidth}{
-~~~~\textbf{連接腳本}~：~GNU~連接器~ld~的每一個連接過程都由連接腳本控制。連接腳本主要用于, 怎樣把輸入檔案內的~section~放入輸出檔案內, 並且控制輸出檔案內各部分在程序位址空間內的布局。連接器有個默認的內置連接腳本, 可以用命令~ld --verbose~查看。選項~-T~選項可以指定自己的連接腳本, 它將代替默認的連接腳本。
+~~~~\textbf{~linker script~}~：~GNU~連接器~ld~的每一個連接過程都由~linker script~控制。~linker script~主要用于, 怎樣把輸入檔案內的~section~放入輸出檔案內, 並且控制輸出檔案內各部分在程序位址空間內的布局。連接器有個默認的內置~linker script~, 可以用命令~ld --verbose~查看。選項~-T~選項可以指定自己的~linker script~, 它將代替默認的~linker script~。
 }
 
-這個連接腳本的功能就是, 在連接的時候, 將程序入口設置為記憶體~\code{0x7c00}~的位置（~BOIS~將跳轉到這裡繼續啟動過程）, 相當于~boot.asm~中的~org 07c00h~一句。有人可能覺得麻煩, 還需要用一個腳本控制加載位址, 但是《自己動手寫作業系統》就給了一個很好的反例：《自》第~1.5~節代碼~1-2~,作者切換調試和運行模式時候需要對代碼進行注釋。
+這個~linker script~的功能就是, 在連接的時候, 將程序入口設置為記憶體~\code{0x7c00}~的位置（~BOIS~將跳轉到這裡繼續啟動過程）, 相當于~boot.asm~中的~org 07c00h~一句。有人可能覺得麻煩, 還需要用一個腳本控制加載位址, 但是《自己動手寫作業系統》就給了一個很好的反例：《自》第~1.5~節代碼~1-2~,作者切換調試和運行模式時候需要對代碼進行注釋。
 
 \begin{Codefrag}
 ;%define _BOOT_DEBUG_   ; 做 Boot Sector 時一定將此行注釋掉!將此行打開後用
@@ -97,7 +97,7 @@ BootMessage:.ascii "Hello, OS world!"
     mov    ax, cs
     mov    ds, ax
     mov    es, ax
-    call   DispStr      ; 調用顯示字符串例程
+    call   DispStr      ; 呼叫顯示字符串例程
     jmp    $            ; 無限循環
 DispStr:
     mov    ax, BootMessage
@@ -114,7 +114,7 @@ dw    0xaa55             ; 結束標志
 \end{Codefrag}
 \codecaption{《自》代碼~1-2~(chapter2/1/boot.asm)}\label{CHsmall_bootASM1}
 
-而如果換成使用腳本控制程序位址空間, 只需要編譯時候調用不同腳本進行連接, 就能解決這個問題。這在嵌入式編程中是很常見的處理方式, 即使用不同的連接腳本一次~make~從一個源程序檔案生成分別運行在開發板上和軟件模擬器上的兩個二進制檔案 。
+而如果換成使用腳本控制程序位址空間, 只需要編譯時候呼叫不同腳本進行連接, 就能解決這個問題。這在嵌入式編程中是很常見的處理方式, 即使用不同的~linker script~一次~make~從一個源程序檔案生成分別運行在開發板上和軟件模擬器上的兩個二進制檔案 。
 
 \subsection{用~Makefile~編譯連接}
 
@@ -123,16 +123,16 @@ dw    0xaa55             ; 結束標志
 \begin{Codefrag}
 CC=gcc
 LD=ld
-LDFILE=solrex_x86.ld    #使用上面提供的連接腳本 solrex_x86.ld
+LDFILE=solrex_x86.ld    #使用上面提供的~linker script~solrex_x86.ld
 OBJCOPY=objcopy
 
 all: boot.img
 
-# Step 1: gcc 調用 as 將 boot.S 編譯成目標檔案 boot.o
+# Step 1: gcc 呼叫 as 將 boot.S 編譯成目標檔案 boot.o
 boot.o: boot.S
         $(CC) -c boot.S
 
-# Step 2: ld 調用連接腳本 solrex_x86.ld 將 boot.o 連接成可執行檔案 boot.elf
+# Step 2: ld 呼叫 linker script solrex_x86.ld 將 boot.o 連接成可執行檔案 boot.elf
 boot.elf: boot.o
         $(LD) boot.o -o boot.elf -e c -T$(LDFILE)
 
@@ -402,7 +402,7 @@ DIR\_FileSize & 0x1c & 4  & 檔案大小 & 0x000000f\\
 \begin{center}\begin{longtable}{c|c|l|l|l}
 \caption[]{BIOS 13h~號中斷的參數表}\label{bios_13}\\
 \hline
-中斷號 & AH & 功能 & 調用參數 & 返回參數\\
+中斷號 & AH & 功能 & 呼叫參數 & 返回參數\\
 \hline
 \multirow{21}[42]{*}{13} & 0 & 磁盤復位 & DL = 驅動器號 & 失敗：\\
    &   &  & 00, 01 為軟碟片, 80h, 81h, $\cdots$~為硬盤 & AH = 錯誤碼\bigstrut\\
@@ -453,7 +453,7 @@ DIR\_FileSize & 0x1c & 4  & 檔案大小 & 0x000000f\\
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=174, lastline=190]{../src/chapter2/2/boot.S}
 \codecaption{搜索~loader.bin~使用的變量定義(節自 chapter2/2/boot.S)}\label{CHsmall_variables}
 
-由于在代碼中有一些打印工作, 我們寫了一個函數專門做這項工作。為了節省代碼長度, 被打印字符串的長度都設置為~9~ byte , 不夠則用空格補齊, 這樣就相當于一個備用的二維數組, 通過數字定位要打印的字符串, 很方便。打印字符串的函數~DispStr~見圖~\ref{CHsmall_DispStr}~, 調用它的時候需要從寄存器~dh~傳入參數字符串序號。
+由于在代碼中有一些打印工作, 我們寫了一個函數專門做這項工作。為了節省代碼長度, 被打印字符串的長度都設置為~9~ byte , 不夠則用空格補齊, 這樣就相當于一個備用的二維數組, 通過數字定位要打印的字符串, 很方便。打印字符串的函數~DispStr~見圖~\ref{CHsmall_DispStr}~, 呼叫它的時候需要從寄存器~dh~傳入參數字符串序號。
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=190, lastline=208]{../src/chapter2/2/boot.S}
 \codecaption{打印字符串函數~DispStr~(節自 chapter2/2/boot.S)}\label{CHsmall_DispStr}
