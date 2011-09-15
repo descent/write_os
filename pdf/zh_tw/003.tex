@@ -41,7 +41,7 @@ Intel~公司在~1978~年發布了一款~16~位字長~CPU: 8086~,~最高頻率~5 
 \subsection{真實模式和保護模式的尋址模式}
 
 前面提到過,~真實模式下的位址線是~20~bit~的,~所以真實模式下的尋址模式使用分段方式來解決~16~位字長機器提供~20~bit~位址空間的問題。這個分段方法需要程序員在編制程序的過程中將存儲器劃分成段,~每個段內的位址空間是線性增長的,~最大可達~64K($2^16$),~
-這樣段位址就可以使用~16~位表示。段基址（~20-bit~）的最低~4~位必須是~0~,~這樣段基址就可以使用~16~位段位址來表示,~需要時將段位址左移~4~位就得到段起始位址。除了便于尋址之外,~分段還有一個好處,~就是將程序的程式碼段、資料段和堆棧段等隔離開,~避免相互之間產生幹擾。
+這樣段位址就可以使用~16~位表示。段基址（~20-bit~）的最低~4~位必須是~0~,~這樣段基址就可以使用~16~位段位址來表示,~需要時將段位址左移~4~位就得到段起始位址。除了便于尋址之外,~分段還有一個好處,~就是將程序的程式碼段、資料段和堆堆疊段等隔離開,~避免相互之間產生幹擾。
 
 當計算某個單元的物理位址時,~比如組合語言中的一個~Label~,~就通過段位址（~16-bit~）左移~4~位得到段基址（~20-bit~）,~再加上該單元（~Label~）的段偏移量（~16-bit~）來得到其物理位址（~20-bit~）,~如圖~\ref{rm_addr}~所示。
 
@@ -55,7 +55,7 @@ Intel~公司在~1978~年發布了一款~16~位字長~CPU: 8086~,~最高頻率~5 
 \label{real_vs_pro}
 \end{figure*}
 
-一般情況下,~段位址會被放在四個段暫存器中,~即：程式碼段~CS,~資料段~DS,~堆棧段~SS~和附加段~ES~暫存器。這樣在加載數據或者控制程序運行的時候,~只需要一個偏移量參數,~CPU~會自動用對應段的起始位址加上偏移量參數來得到需要的位址。（後繼~CPU~又加上了兩個段暫存器~FS~和~GS~,~不過使用方式是基本一樣的。）
+一般情況下,~段位址會被放在四個段暫存器中,~即：程式碼段~CS,~資料段~DS,~堆堆疊段~SS~和附加段~ES~暫存器。這樣在加載數據或者控制程序運行的時候,~只需要一個偏移量參數,~CPU~會自動用對應段的起始位址加上偏移量參數來得到需要的位址。（後繼~CPU~又加上了兩個段暫存器~FS~和~GS~,~不過使用方式是基本一樣的。）
 
 由此可見,~真實模式的尋址模式是很簡單的,~就是用兩個~16~位邏輯位址（段位址：偏移位址）組合成一個~20~bit~物理位址,~而保護模式的尋址方式就要稍微復雜一點了。
 
@@ -123,7 +123,7 @@ Intel~的~CPU~在保護模式下是可以選擇打開分頁機制的,~但為了�
 
 \subsection{加載~GDT} \label{CHpm_secloadgdt}
 
-GDT~所需要的信息我們都知道了,~GDT~表也通過圖~\ref{CHpm_descmu}~中的程式碼實現了。那麼,~我們應該向~GDT~中填入缺少的信息,~然後載入~GDT~了。將~GDT~載入處理機是用~\code{lgdt}~匯編指令實現的,~但是~\code{lgdt}~指令需要存放~GDT~的基址和界限的指針作參數,~所以我們還需要知道~GDT~的位置和~GDT~的界限：
+GDT~所需要的信息我們都知道了,~GDT~表也通過圖~\ref{CHpm_descmu}~中的程式碼實現了。那麼,~我們應該向~GDT~中填入缺少的信息,~然後載入~GDT~了。將~GDT~載入處理機是用~\code{lgdt}~匯編指令實現的,~但是~\code{lgdt}~指令需要存放~GDT~的基址和界限的指標作參數,~所以我們還需要知道~GDT~的位置和~GDT~的界限：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=17, lastline=63]{../../src/chapter3/1/loader.S}
 \codecaption{加載~GDT(節自 chapter3/1/loader.S)}\label{CHpm_loadgdt}
@@ -199,7 +199,7 @@ NASM~的手冊中說~GAS~沒有提供這條指令的實做,~我就用~.byte~偽�
 
 \begin{itemize}
 \item{\textbf{G}}: G(Granularity,~粒度)：如果~G flag~置為~0~,~段的大小以~byte~為單位,~段長度範圍是~\code{1 byte$\sim$1 MB}~；如果~G flag~置為~1~,~段的大小以~4 KB~為單位,~段長度範圍是~\code{4 KB $\sim$ 4 GB}~。
-\item{\textbf{D/B}}：D/B(Default operation size/Default stack pionter size and/or upper Bound,~ 默認操作大小),~其意思取決于段描述符是程式碼段、資料段或者堆棧段。該~flag~置為~0~代表程式碼段/資料段為~16~位的；置為~1~代表該段是~32~位的。
+\item{\textbf{D/B}}：D/B(Default operation size/Default stack pionter size and/or upper Bound,~ 默認操作大小),~其意思取決于段描述符是程式碼段、資料段或者堆堆疊段。該~flag~置為~0~代表程式碼段/資料段為~16~位的；置為~1~代表該段是~32~位的。
 \item{\textbf{L}}：L(Long, 長),~~L flag~是~IA-32e(Extended Memory 64 Technology)~模式下使用的標志。該~flag~置為~1~代表該段是正常的~64~位的程式碼段；置為~0~代表在兼容模式下運行的程式碼段。在~IA-32~架構下,~該位是保留位,~並且永遠被置為~0~。
 \item{\textbf{AVL}}：保留給作業系統軟件使用的位。
 \item{\textbf{P}}：P(segment-Present,~段佔用？) flag~用于標志段是否在記憶體中,~主要供記憶體管理軟件使用。如果~P flag~被置為~0~,~說明該段目前不在記憶體中,~該段指向的記憶體可以暫時被其它任務佔用；如果~P flag~被置為~1~,~說明該段在記憶體中。如果~P flag~為~0~的段被訪問,~處理機會產生一個~segment-not-present(\#NP)~異常。
@@ -269,19 +269,19 @@ NASM~的手冊中說~GAS~沒有提供這條指令的實做,~我就用~.byte~偽�
 
 \subsection{使用~LDT~}
 
-從目前的需求來看,~對~LDT~並沒有非介紹不可的理由,~但是理解~LDT~的使用,~對理解段式存儲和處理機多任務存儲空間分配有很大的幫助。所以我們在下面的程式碼中實現幾個簡單的例子：一,~建立~32~位數據和堆棧兩個段並將描述符添加到~GDT~中；二,~添加一段簡單程式碼,~並以其段描述符為基礎建立一個~LDT；三,~在~GDT~中添加~LDT~的段描述符並初始化所有~DT~；四,~進入保護模式下運行的~32~位程式碼段後,~加載~LDT~並跳轉執行~LDT~中包含的程式碼段。
+從目前的需求來看,~對~LDT~並沒有非介紹不可的理由,~但是理解~LDT~的使用,~對理解段式存儲和處理機多任務存儲空間分配有很大的幫助。所以我們在下面的程式碼中實現幾個簡單的例子：一,~建立~32~位數據和堆堆疊兩個段並將描述符添加到~GDT~中；二,~添加一段簡單程式碼,~並以其段描述符為基礎建立一個~LDT；三,~在~GDT~中添加~LDT~的段描述符並初始化所有~DT~；四,~進入保護模式下運行的~32~位程式碼段後,~加載~LDT~並跳轉執行~LDT~中包含的程式碼段。
 
-首先,~建立~32~位全局資料段和堆棧段,~並將其描述符添加到~GDT~中：
+首先,~建立~32~位全局資料段和堆堆疊段,~並將其描述符添加到~GDT~中：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=50, lastline=62]{../../src/chapter3/2/loader.S}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=22, lastline=41]{../../src/chapter3/2/loader.S}
-\codecaption{32~位全局資料段和堆棧段,~以及對應的~GDT~結構(節自 chapter3/2/loader.S)}\label{CHpm_add_ds}
+\codecaption{32~位全局資料段和堆堆疊段,~以及對應的~GDT~結構(節自 chapter3/2/loader.S)}\label{CHpm_add_ds}
 
-在圖~\ref{CHpm_add_ds}~中,~我們首先建立了一個全局的資料段,~並在資料段裡放置了兩個字符串,~分別用來進入保護模式後和跳轉到~LDT~指向的程式碼段後作為信息輸出。然後又建立了一個全局的堆棧段,~為堆棧段預留了~512~~byte~的空間,~並將棧頂設置為距棧底~511~~byte~處。然後與上節介紹的類似,~將資料段和堆棧段的段描述符添加到~GDT~中,~並設置好對應的段選擇子。
+在圖~\ref{CHpm_add_ds}~中,~我們首先建立了一個全局的資料段,~並在資料段裡放置了兩個字符串,~分別用來進入保護模式後和跳轉到~LDT~指向的程式碼段後作為信息輸出。然後又建立了一個全局的堆堆疊段,~為堆堆疊段預留了~512~~byte~的空間,~並將堆疊頂設置為距堆疊底~511~~byte~處。然後與上節介紹的類似,~將資料段和堆堆疊段的段描述符添加到~GDT~中,~並設置好對應的段選擇子。
 
-要注意到資料段、堆棧段和程式碼段的段描述符屬性不盡相同。資料段的段描述符屬性是~\code{DA\_DRW}~,~回憶我們前面~pm.h~的內容（圖~\ref{CHpm_segattr}~）,~~\code{DA\_DRW}~的內容是~\code{0x92},~用二進制就是~\code{10010010},~其後四位就對應著圖~\ref{code_data_types}~中的第二~2(0010)~項,~說明這個段是可讀寫的資料段；前四位對應著~\code{P|DPL|S}~三個~flag~,~即~\code{P:1, DPL:00, S:1}~,~與第~\ref{CHpm_desattr}~節結合理解,~意思就是該段在記憶體中,~為最高的權限,~非系統段。所以我們可以看到~pm.h~中的各個屬性變量定義,~就是將二進制的屬性值用可理解的變量名表示出來,~在用的時候直接加上變量即可。
+要注意到資料段、堆堆疊段和程式碼段的段描述符屬性不盡相同。資料段的段描述符屬性是~\code{DA\_DRW}~,~回憶我們前面~pm.h~的內容（圖~\ref{CHpm_segattr}~）,~~\code{DA\_DRW}~的內容是~\code{0x92},~用二進制就是~\code{10010010},~其後四位就對應著圖~\ref{code_data_types}~中的第二~2(0010)~項,~說明這個段是可讀寫的資料段；前四位對應著~\code{P|DPL|S}~三個~flag~,~即~\code{P:1, DPL:00, S:1}~,~與第~\ref{CHpm_desattr}~節結合理解,~意思就是該段在記憶體中,~為最高的權限,~非系統段。所以我們可以看到~pm.h~中的各個屬性變量定義,~就是將二進制的屬性值用可理解的變量名表示出來,~在用的時候直接加上變量即可。
 
-同理我們也可以分別來理解~GDT~中堆棧段和程式碼段描述符的屬性定義。因為不同類型的屬性使用的是段描述符中不同的位,~所以不同類型的屬性可以直接相加得到復合的屬性值,~例如堆棧段的~\code{(DA\_DRWA + DA\_32)}~,~其意思類似于~\code{C++}~中~\code{fstream}~打開文件時可以對模式進行算術或（\code{ios\_base::in | ios\_base::out}）來得到復合參數。
+同理我們也可以分別來理解~GDT~中堆堆疊段和程式碼段描述符的屬性定義。因為不同類型的屬性使用的是段描述符中不同的位,~所以不同類型的屬性可以直接相加得到復合的屬性值,~例如堆堆疊段的~\code{(DA\_DRWA + DA\_32)}~,~其意思類似于~\code{C++}~中~\code{fstream}~打開文件時可以對模式進行算術或（\code{ios\_base::in | ios\_base::out}）來得到復合參數。
 
 其次,~添加一段簡單的程式碼,~並以其描述符為基礎建立一個~LDT：
 
@@ -308,7 +308,7 @@ LDT~的選擇子是與~GDT~選擇子有明顯區別的,~圖~\ref{seg_selector}~�
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=141, lastline=176]{../../src/chapter3/2/loader.S}
 \codecaption{在保護模式程式碼段中加載~LDT~並跳轉執行~LDT~程式碼段(節自 chapter3/2/loader.S)}\label{CHpm_run_ldt}
 
-在~\code{LABEL\_SEG\_CODE32}~中前幾行,~我們可以看到非常熟悉的匯編指令,~和一般匯編程序開頭初始化數據/程式碼/堆棧段暫存器的指令非常像,~只不過這裡賦給幾個暫存器的參數都是段選擇子,~而不是一般的位址。該程式碼段剩下的內容和前面圖~\ref{CHpm_build_ldt}~中~\code{LABEL\_CODEA}~一樣,~都是打印一個字符串,~只不過這裡選擇在第~10~行（屏幕左側中央）打印。
+在~\code{LABEL\_SEG\_CODE32}~中前幾行,~我們可以看到非常熟悉的匯編指令,~和一般匯編程序開頭初始化數據/程式碼/堆堆疊段暫存器的指令非常像,~只不過這裡賦給幾個暫存器的參數都是段選擇子,~而不是一般的位址。該程式碼段剩下的內容和前面圖~\ref{CHpm_build_ldt}~中~\code{LABEL\_CODEA}~一樣,~都是打印一個字符串,~只不過這裡選擇在第~10~行（屏幕左側中央）打印。
 
 為了方便閱讀,~整個~loader.S~的程式碼附在圖~\ref{CHpm_loader2}~中。
 
@@ -351,13 +351,13 @@ x86~使用全局描述符表（GDT）和局部描述符表（LDT）來實現不�
 \item{\textbf{DPL(Descriptor Privilege Level)}}：描述符權限,~定義于段描述符或門描述符中的~DPL~域（見圖~\ref{seg_desc}）,~它限制了可以訪問此段資源的權限別。根據被訪問的段或者門的不同,~DPL~的意義也不同：
   \begin{itemize}
   \item{\textbf{資料段}}：資料段的~DPL~限制了可以訪問該資料段的最低權限。假如資料段的~DPL~為~1,~那麼只有~CPL~為~0,1~的程序才能訪問該資料段。
-  \item{\textbf{非一致程式碼段（不使用調用門）}}：非一致程式碼段就是一般的程式碼段,~它的~DPL~表示可以訪問該段的權限,~程序或者任務的權限必須與該段的~DPL~完全相同才可以訪問該段。
-  \item{\textbf{調用門}}：調用門的~DPL~限制了可以訪問該門的最低權限,~與資料段~DPL~的意思一樣。
-  \item{\textbf{一致程式碼段和使用調用門訪問的非一致程式碼段}}：這種程式碼段的~DPL~表示可以訪問該段的最高權限。假如一致程式碼段的~DPL~是~2,~那麼~CPL~為~0,1~的程序就無法訪問該段。
+  \item{\textbf{非一致程式碼段（不使用~call gate~）}}：非一致程式碼段就是一般的程式碼段,~它的~DPL~表示可以訪問該段的權限,~程序或者任務的權限必須與該段的~DPL~完全相同才可以訪問該段。
+  \item{\textbf{~call gate~}}：~call gate~的~DPL~限制了可以訪問該門的最低權限,~與資料段~DPL~的意思一樣。
+  \item{\textbf{一致程式碼段和使用~call gate~訪問的非一致程式碼段}}：這種程式碼段的~DPL~表示可以訪問該段的最高權限。假如一致程式碼段的~DPL~是~2,~那麼~CPL~為~0,1~的程序就無法訪問該段。
   \item{\textbf{TSS(Task State Segment)}}：任務狀態段的~DPL~表示可以訪問該段的最低權限,~與資料段~DPL~的意思一樣。
   \end{itemize}
 
-\item{\textbf{RPL(Requested Privilege Level)}}：請求權限,~定義于段選擇子的~RPL~域中（見圖~\ref{seg_selector}）。它限制了這個選擇子可訪問資源的最高權限。比如一個段選擇子的~RPL~為~2~,~那麼使用這個段選擇子只能訪問~DPL~為~2~或者~3~的段,~即使使用這個段選擇子的程序當前權限（CPL）為~0~。就是說,~$\max{(CPL, RPL)}\le DPL$~才被允許訪問該段,~即當~CPL~小于~RPL~時,~RPL~起決定性作用,~反之亦然。使用~RPL~可以避免權限高的程序代替應用程序訪問該應用程序無權訪問的段。比如在系統調用時,~應用程序調用系統過程,~雖然系統過程的權限高（$CPL=0$）,~但是被調用的系統過程仍然無法訪問權限高于應用程序的段（$DPL<RPL=3$）,~就避免了可能出現的安全問題。
+\item{\textbf{RPL(Requested Privilege Level)}}：請求權限,~定義于段選擇子的~RPL~域中（見圖~\ref{seg_selector}）。它限制了這個選擇子可訪問資源的最高權限。比如一個段選擇子的~RPL~為~2~,~那麼使用這個段選擇子只能訪問~DPL~為~2~或者~3~的段,~即使使用這個段選擇子的程序當前權限（CPL）為~0~。就是說,~$\max{(CPL, RPL)}\le DPL$~才被允許訪問該段,~即當~CPL~小于~RPL~時,~RPL~起決定性作用,~反之亦然。使用~RPL~可以避免權限高的程序代替應用程序訪問該應用程序無權訪問的段。比如在系統呼叫時,~應用程序呼叫系統過程,~雖然系統過程的權限高（$CPL=0$）,~但是被呼叫的系統過程仍然無法訪問權限高于應用程序的段（$DPL<RPL=3$）,~就避免了可能出現的安全問題。
 \end{itemize}
 
 在將段描述符對應的段選擇子加載到段暫存器時,~處理機通過將~CPL, 段選擇子的~RPL~和該段的~DPL~相比較,~來判斷程序是否有權訪問另外一個段。如果~$CPL>\max{(RPL, DPL)}~$,~或者$\max{(CPL, RPL)}>DPL$,~那麼該訪問就是不合法的,~處理機就會產生一個常規保護異常（\texttt{\#}GP, General Protection Exception）。
@@ -387,7 +387,7 @@ JMP~和~CALL~指令可以實現以下~4~種形式的轉移：
 
 \begin{itemize}
 \item 目標操作數包含目標程式碼段的段選擇子。
-\item 目標操作數指向一個包含目標程式碼段段選擇子的調用門描述符。
+\item 目標操作數指向一個包含目標程式碼段段選擇子的~call gate~描述符。
 \item 目標操作數指向一個包含目標程式碼段段選擇子的任務狀態段。
 \item 目標操作數指向一個任務門,~這個任務門指向一個包含目標程式碼段段選擇子的任務狀態段。
 \end{itemize}
@@ -398,28 +398,28 @@ JMP~和~CALL~指令可以實現以下~4~種形式的轉移：
 
 用~JMP, CALL~和~RET~指令在段內進行近跳轉並沒有權限的變化,~所以對這類轉移是不進行權限檢查的；用~JMP, CALL~和~RET~在段間進行遠跳轉涉及到其它程式碼段,~所以要進行權限檢查。
 
-對不通過調用門的直接轉移來說,~又分為兩種情形：
+對不通過~call gate~的直接轉移來說,~又分為兩種情形：
 
 \begin{itemize}
-\item{訪問非一致程式碼段}：當目標是非一致程式碼段時（目標段段描述符的~C flag~為~0~,~見圖~\ref{code_data_types}）,~權限檢查要求調用者的~CPL~與目標程式碼段的~DPL~相等,~而且調用者使用的目標程式碼段段選擇子的~RPL~必須小于等于目標程式碼段的~DPL。我們之前的程式碼都屬于這種情形,~其中~$CPL=DPL=RPL=0$。
+\item{訪問非一致程式碼段}：當目標是非一致程式碼段時（目標段段描述符的~C flag~為~0~,~見圖~\ref{code_data_types}）,~權限檢查要求呼叫者的~CPL~與目標程式碼段的~DPL~相等,~而且呼叫者使用的目標程式碼段段選擇子的~RPL~必須小于等于目標程式碼段的~DPL。我們之前的程式碼都屬于這種情形,~其中~$CPL=DPL=RPL=0$。
 \item{訪問一致程式碼段}：當目標是一致程式碼段時（目標段段描述符的~C flag~為~1~,~見圖~\ref{code_data_types}）,~權限檢查要求~$CPL \ge DPL$,~RPL~不被檢查,~而且轉移時並不修改~CPL。
 \end{itemize}
 
 總的來說,~通過~JMP~和~CALL~實行的都是一般的轉移,~最多從低權限轉移到高權限的一致程式碼段,~CPL~總是不變的。
 
-\subsection{使用調用門轉移}\label{CHpm_callgate}
+\subsection{使用~call gate~轉移}\label{CHpm_callgate}
 
-調用門是~x86~體系結構下用來控制程序在不同權限間轉移的一種機制。它的目的是使低權限的程式碼能夠調用高權限的程式碼,~這一機制在使用了記憶體保護和權限機制的現代作業系統中非常有用,~因為它允許應用程序在作業系統控制下安全地調用內核例程或者系統接口。
+~call gate~是~x86~體系結構下用來控制程序在不同權限間轉移的一種機制。它的目的是使低權限的程式碼能夠呼叫高權限的程式碼,~這一機制在使用了記憶體保護和權限機制的現代作業系統中非常有用,~因為它允許應用程序在作業系統控制下安全地呼叫內核例程或者系統接口。
 
-\FIG{調用門描述符}{callgate_desc}{.9\textwidth}
+\FIG{~call gate~描述符}{callgate_desc}{.9\textwidth}
 
-門其實也是一種描述符,~和段描述符類似。調用門描述符的資料結構如圖~\ref{callgate_desc}~所示。其實看起來這個調用門描述符的資料結構要比段描述符簡單一些,~至少從它的屬性來說,~沒有段描述符多。我們仍然只關注最重要的部分：首先是段選擇子（Segment Selector）,~指定了通過這個調用門訪問的程式碼段；其次是段偏移量（Offset in Segment）,~指定了要訪問程式碼段中的某個入口偏移；描述符權限（DPL）,~代表此門描述符的權限；P,~代表此調用門是否可用；參數計數（Param. Count）記錄了如果發生棧切換的話,~有多少個選項參數會在棧間拷貝。
+門其實也是一種描述符,~和段描述符類似。~call gate~描述符的資料結構如圖~\ref{callgate_desc}~所示。其實看起來這個~call gate~描述符的資料結構要比段描述符簡單一些,~至少從它的屬性來說,~沒有段描述符多。我們仍然只關注最重要的部分：首先是段選擇子（Segment Selector）,~指定了通過這個~call gate~訪問的程式碼段；其次是段偏移量（Offset in Segment）,~指定了要訪問程式碼段中的某個入口偏移；描述符權限（DPL）,~代表此門描述符的權限；P,~代表此~call gate~是否可用；參數計數（Param. Count）記錄了如果發生堆疊切換的話,~有多少個選項參數會在堆疊間拷貝。
 
-簡單來說,~調用門描述了由一個段選擇子和一個偏移所指定的目標程式碼段中的一個位址,~程序通過調用門將轉移到這個位址。下面我們通過一個簡單的例子來介紹一下調用門的基本使用方法。
+簡單來說,~~call gate~描述了由一個段選擇子和一個偏移所指定的目標程式碼段中的一個位址,~程序通過~call gate~將轉移到這個位址。下面我們通過一個簡單的例子來介紹一下~call gate~的基本使用方法。
 
-\subsubsection{簡單的調用門轉移舉例}
+\subsubsection{簡單的~call gate~轉移舉例}
 
-為了使用調用門,~我們首先要給出一個目標段,~然後用該目標段的信息初始化調用門的門描述符,~最後用調用門的門選擇子實現門調用。
+為了使用~call gate~,~我們首先要給出一個目標段,~然後用該目標段的信息初始化~call gate~的門描述符,~最後用~call gate~的門選擇子實現門呼叫。
 
 添加一個目標段我們已經做過很多次,~非常簡單。首先在上一節~loader.S~最後添加一個打印一個字符的程式碼段~\code{LABEL\_SEG\_CODECG},~接著將該段的段描述符~\code{LABEL\_DESC\_CODECG}~添加到~GDT~中,~然後為該段準備一個段選擇子~\code{SelectorCodeCG},~最後加入初始化該段描述符的程式碼：
 
@@ -427,78 +427,78 @@ JMP~和~CALL~指令可以實現以下~4~種形式的轉移：
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=28, lastline=29]{../../src/chapter3/3/loader.S}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=43, lastline=44]{../../src/chapter3/3/loader.S}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=92, lastline=94]{../../src/chapter3/3/loader.S}
-\codecaption{添加調用門的目標段(節自 chapter3/3/loader.S)}\label{CHpm_codecg}
+\codecaption{添加~call gate~的目標段(節自 chapter3/3/loader.S)}\label{CHpm_codecg}
 
 總的來看,~~\code{LABEL\_SEG\_CODECG}~指向的這個段和我們以前為了打印程序運行結果所使用的段沒有本質不同,~為了簡單起見,~這裡我們僅僅讓它打印一個字符~\code{'C'}~就返回。
 
-用目標程式碼段~\code{LABEL\_SEG\_CODECG}~的信息初始化調用門的門描述符~\code{LABEL\_CG\_TEST},~以及門選擇子~\code{SelectorCGTest}。與匯編宏~\code{Descriptor}~類似,~我們這裡使用匯編宏~\code{Gate}~來初始化門描述符,~宏~\code{Gate}~的定義可以在頭文件~\code{pm.h}~中找到：
+用目標程式碼段~\code{LABEL\_SEG\_CODECG}~的信息初始化~call gate~的門描述符~\code{LABEL\_CG\_TEST},~以及門選擇子~\code{SelectorCGTest}。與匯編宏~\code{Descriptor}~類似,~我們這裡使用匯編宏~\code{Gate}~來初始化門描述符,~宏~\code{Gate}~的定義可以在頭文件~\code{pm.h}~中找到：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=71, lastline=82]{../../src/chapter3/3/pm.h}
 \codecaption{匯編宏~Gate~定義(節自 chapter3/3/pm.h)}\label{CHpm_cg_gate}
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=29, lastline=33]{../../src/chapter3/3/loader.S}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=43, lastline=45]{../../src/chapter3/3/loader.S}
-\codecaption{設置調用門描述符及選擇子(節自 chapter3/3/loader.S)}\label{CHpm_cg_test}
+\codecaption{設置~call gate~描述符及選擇子(節自 chapter3/3/loader.S)}\label{CHpm_cg_test}
 
-我們可以看到,~宏~\code{Gate}~的四個參數分別為：段選擇子、偏移量、參數計數和屬性,~它們在存儲空間中的分布與圖~\ref{callgate_desc}~中介紹相同。由于這個例子僅僅介紹調用門的簡單使用,~並不涉及權限切換,~所以也不發生棧切換,~這裡我們將參數計數設置為~0；門描述符的屬性為~\code{(DA\_386CGate + DPL)}~,~表明它是一個調用門（屬性定義見圖~\ref{CHpm_descm}）,~DPL~為~0~,~與我們一直使用的權限相同；目標程式碼段選擇子是~\code{SelectorCodeCG}~,~偏移是~0~,~所以如果該調用門被調用,~將轉移到目標程式碼段的開頭,~即~\code{LABEL\_SEG\_CODECG}~處開始執行。
+我們可以看到,~宏~\code{Gate}~的四個參數分別為：段選擇子、偏移量、參數計數和屬性,~它們在存儲空間中的分布與圖~\ref{callgate_desc}~中介紹相同。由于這個例子僅僅介紹~call gate~的簡單使用,~並不涉及權限切換,~所以也不發生堆疊切換,~這裡我們將參數計數設置為~0；門描述符的屬性為~\code{(DA\_386CGate + DPL)}~,~表明它是一個~call gate~（屬性定義見圖~\ref{CHpm_descm}）,~DPL~為~0~,~與我們一直使用的權限相同；目標程式碼段選擇子是~\code{SelectorCodeCG}~,~偏移是~0~,~所以如果該~call gate~被呼叫,~將轉移到目標程式碼段的開頭,~即~\code{LABEL\_SEG\_CODECG}~處開始執行。
 
-使用遠調用~lcall~指令調用該調用門的門選擇子~\code{SelectorCGTest}：
+使用遠呼叫~lcall~指令呼叫該~call gate~的門選擇子~\code{SelectorCGTest}：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=185, lastline=190]{../../src/chapter3/3/loader.S}
-\codecaption{調用門選擇子(節自 chapter3/3/loader.S)}\label{CHpm_cg_call1}
+\codecaption{~call gate~選擇子(節自 chapter3/3/loader.S)}\label{CHpm_cg_call1}
 
-由于對調用門的調用往往涉及到段間轉移,~所以我們通常使用~gas~的~lcall~遠跳轉指令和~lret~遠返回指令進行調用和返回。
+由于對~call gate~的呼叫往往涉及到段間轉移,~所以我們通常使用~gas~的~lcall~遠跳轉指令和~lret~遠返回指令進行呼叫和返回。
 
-這樣我們就完成了使用調用門進行簡單控制權轉移的程式碼,~~\code{make, sudo make copy}~之後,~用~VBox~虛擬機載入生成的鏡像,~運行結果如圖~\ref{vb_run_8}~所示。由于我們僅僅是在加載~LDT~之前添加了一個門調用,~而且門調用的目標段在屏幕的第~11~行第~0~列打印了一個~\code{'C'}~後就返回到了調用處,~所以加載~LDT~的程式碼繼續運行,~就是圖中所示結果。
+這樣我們就完成了使用~call gate~進行簡單控制權轉移的程式碼,~~\code{make, sudo make copy}~之後,~用~VBox~虛擬機載入生成的鏡像,~運行結果如圖~\ref{vb_run_8}~所示。由于我們僅僅是在加載~LDT~之前添加了一個門呼叫,~而且門呼叫的目標段在屏幕的第~11~行第~0~列打印了一個~\code{'C'}~後就返回到了呼叫處,~所以加載~LDT~的程式碼繼續運行,~就是圖中所示結果。
 
-\FIG{使用調用門進行簡單的控制權轉移}{vb_run_8}{0.75\textwidth}
+\FIG{使用~call gate~進行簡單的控制權轉移}{vb_run_8}{0.75\textwidth}
 
-\subsubsection{涉及權限變化的調用門轉移}
+\subsubsection{涉及權限變化的~call gate~轉移}
 
-在上面例子中我們只是使用調用門取代了傳統的直接跳轉方式,~並沒有涉及到權限的變化。顯然調用門不是用來做這種自找麻煩的事情的,~其設計的主要目的是實現從低權限程式碼跳轉到高權限的非一致程式碼的功能。
+在上面例子中我們只是使用~call gate~取代了傳統的直接跳轉方式,~並沒有涉及到權限的變化。顯然~call gate~不是用來做這種自找麻煩的事情的,~其設計的主要目的是實現從低權限程式碼跳轉到高權限的非一致程式碼的功能。
 
-在使用調用門進行轉移時,~處理機會使用四個權限值來檢查控制權的轉移是否合法：
+在使用~call gate~進行轉移時,~處理機會使用四個權限值來檢查控制權的轉移是否合法：
 
 \begin{enumerate}
 \item CPL：當前權限；
-\item RPL：調用門選擇子的請求權限；
-\item DPL：調用門描述符的描述符權限；
+\item RPL：~call gate~選擇子的請求權限；
+\item DPL：~call gate~描述符的描述符權限；
 \item DPL：目標程式碼段的段描述符權限。
 \end{enumerate}
 
-使用~CALL~或者~JMP~指令訪問調用門進行控制權轉移時,~權限檢查的規則有所不同,~如表~\ref{callgate_rules}~所示：
+使用~CALL~或者~JMP~指令訪問~call gate~進行控制權轉移時,~權限檢查的規則有所不同,~如表~\ref{callgate_rules}~所示：
 
 \begin{center}\begin{longtable}{|l|l|}
-\caption[]{調用門權限檢查規則}\label{callgate_rules}\\
+\caption[]{~call gate~權限檢查規則}\label{callgate_rules}\\
 \hline
 \textbf{指令} & \textbf{權限檢查規則}\\
 \hline
-CALL & CPL $\le$ 調用門~DPL; RPL $\le$ 調用門~DPL\\
+CALL & CPL $\le$ ~call gate~~DPL; RPL $\le$ ~call gate~~DPL\\
      & 目標段 DPL $\le$ CPL\\
 \hline
-JMP  & CPL $\le$ 調用門~DPL; RPL $\le$ 調用門~DPL\\
+JMP  & CPL $\le$ ~call gate~~DPL; RPL $\le$ ~call gate~~DPL\\
      & 當目標段是一致程式碼段時：目標段~DPL $\le$ CPL\\
      & 當目標段是非一致程式碼段時：目標段~DPL = CPL\\
 \hline
 \end{longtable}\end{center}
 
-這張表內容雖然不多,~但也不容易很快理解。這裡我們應該著重看目標段~DPL~和~CPL~的比較,~這才是調用門權限檢驗的特點所在。總的來說,~使用調用門需要目標段的~DPL~小于或等于~CPL~,~意思就是要轉移的目標段權限高于當前權限。這與我們在本節開頭看到的一般轉移的權限檢查有非常明顯的不同。除此之外剩下的檢查就是對調用門訪問的檢查了,~這種權限檢查和訪問一個資料段時進行的權限檢查的規則是一樣的,~我們已經熟知了。
+這張表內容雖然不多,~但也不容易很快理解。這裡我們應該著重看目標段~DPL~和~CPL~的比較,~這才是~call gate~權限檢驗的特點所在。總的來說,~使用~call gate~需要目標段的~DPL~小于或等于~CPL~,~意思就是要轉移的目標段權限高于當前權限。這與我們在本節開頭看到的一般轉移的權限檢查有非常明顯的不同。除此之外剩下的檢查就是對~call gate~訪問的檢查了,~這種權限檢查和訪問一個資料段時進行的權限檢查的規則是一樣的,~我們已經熟知了。
 
-我們已經了解了涉及權限變化的調用門轉移時處理機進行的權限檢查規則,~但為了寫一段從低權限轉移到高權限的測試程式碼,~我們仍然需要處理一個問題：如何從高權限轉移到低權限？因為我們之前的程式碼一直運行在~ring 0~權限上,~要實現從低到高的轉移,~首先要從高權限轉到低權限。
+我們已經了解了涉及權限變化的~call gate~轉移時處理機進行的權限檢查規則,~但為了寫一段從低權限轉移到高權限的測試程式碼,~我們仍然需要處理一個問題：如何從高權限轉移到低權限？因為我們之前的程式碼一直運行在~ring 0~權限上,~要實現從低到高的轉移,~首先要從高權限轉到低權限。
 
 其實思想很簡單,~既然~CALL~指令能從低權限轉移到高權限,~自然而然地~RET~指令能從高權限返回低權限。我們只需要~hack~一下~RET~指令的使用方法即可（即用~RET~指令實現跳轉到低權限程式碼的功能）。
 
 一般~CALL~和~RET~指令都是配合使用的,~先用~CALL~跳轉到目標位址,~目標程式碼執行完後再用~RET~返回到~CALL~的下一條指令。為了從~ring 0~跳轉到~ring 3~,~我們並不使用~CALL~而直接執行~RET。為了使~RET~執行返回時不出錯,~我們需要為~RET~準備好返回時環境,~就像通常執行~CALL~指令後處理機進行的工作一樣。
 
-那麼執行~CALL~指令時處理機都進行了哪些工作呢？這是一個非常復雜的問題,~我們將留待下個小節再詳細介紹。但是在我們的例子裡（即最簡單的情況下）,~CALL~所做的就是將~SS, ESP, CS, EIP~這四個暫存器的值順序壓到棧裡,~這樣在~RET~指令執行的時候,~處理機從堆棧~pop~出~EIP, CS, ESP, SS~的值來恢復~CALL~指令執行後的處理機現場。所以為了使~RET~跳轉到我們想要執行的程式碼段,~我們只需要手動將~ring 3~目標程式碼段的對應的~SS, ESP, CS, EIP~值壓到棧裡即可。
+那麼執行~CALL~指令時處理機都進行了哪些工作呢？這是一個非常復雜的問題,~我們將留待下個小節再詳細介紹。但是在我們的例子裡（即最簡單的情況下）,~CALL~所做的就是將~SS, ESP, CS, EIP~這四個暫存器的值順序壓到堆疊裡,~這樣在~RET~指令執行的時候,~處理機從堆堆疊~pop~出~EIP, CS, ESP, SS~的值來恢復~CALL~指令執行後的處理機現場。所以為了使~RET~跳轉到我們想要執行的程式碼段,~我們只需要手動將~ring 3~目標程式碼段的對應的~SS, ESP, CS, EIP~值壓到堆疊裡即可。
 
-下面開始準備這個~demo,~仍舊是在上一節程式碼的基礎上進行添加。首先,~我們準備一個~ring 3~目標程式碼段和新棧：
+下面開始準備這個~demo,~仍舊是在上一節程式碼的基礎上進行添加。首先,~我們準備一個~ring 3~目標程式碼段和新堆疊：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=224, lastline=237]{../../src/chapter3/4/loader.S}
 \codecaption{要運行在~ring 3~下的程式碼段(節自 chapter3/4/loader.S)}\label{CHpm_coder3}
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=73, lastline=76]{../../src/chapter3/4/loader.S}
-\codecaption{為~ring 3~程式碼段準備的新棧(節自 chapter3/4/loader.S)}\label{CHpm_stackr3}
+\codecaption{為~ring 3~程式碼段準備的新堆疊(節自 chapter3/4/loader.S)}\label{CHpm_stackr3}
 
 這個程式碼段的功能就是在第~11~行第~1~列打印一個~3~字。
 
@@ -506,14 +506,14 @@ JMP  & CPL $\le$ 調用門~DPL; RPL $\le$ 調用門~DPL\\
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=29, lastline=31]{../../src/chapter3/4/loader.S}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=47, lastline=49]{../../src/chapter3/4/loader.S}
-\codecaption{為~ring 3~程式碼段和堆棧段添加的描述符和選擇子(節自 chapter3/4/loader.S)}\label{CHpm_coder3_desc}
+\codecaption{為~ring 3~程式碼段和堆堆疊段添加的描述符和選擇子(節自 chapter3/4/loader.S)}\label{CHpm_coder3_desc}
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=105, lastline=109]{../../src/chapter3/4/loader.S}
-\codecaption{初始化~ring 3~程式碼段和堆棧段描述符的程式碼(節自 chapter3/4/loader.S)}\label{CHpm_coder3_init}
+\codecaption{初始化~ring 3~程式碼段和堆堆疊段描述符的程式碼(節自 chapter3/4/loader.S)}\label{CHpm_coder3_init}
 
-我們注意到,~其實~ring 3~下的程式碼段和~ring 0~下的程式碼段的程式碼部分是沒有任何區別的,~區別在于它們的程式碼段描述符和選擇子中所標明的權限。我們將~ring 3~下的目標程式碼段和堆棧段的段描述符屬性中加上~\code{DA\_DPL3}~,~表明它們的段描述符權限均為~3~；在它們的段選擇子屬性中加上~\code{SA\_RPL3}~,~表明它們的段選擇子請求權限均為~3~。以上這兩點限制了這個段只能在~ring 3~下運行。
+我們注意到,~其實~ring 3~下的程式碼段和~ring 0~下的程式碼段的程式碼部分是沒有任何區別的,~區別在于它們的程式碼段描述符和選擇子中所標明的權限。我們將~ring 3~下的目標程式碼段和堆堆疊段的段描述符屬性中加上~\code{DA\_DPL3}~,~表明它們的段描述符權限均為~3~；在它們的段選擇子屬性中加上~\code{SA\_RPL3}~,~表明它們的段選擇子請求權限均為~3~。以上這兩點限制了這個段只能在~ring 3~下運行。
 
-準備好了兩個段,~我們將這兩個段的信息作為~SS, ESP, CS, EIP~的內容依次壓棧,~然後再執行~lret~長返回指令,~就能跳轉到~ring 3~下運行目標程式碼段了：
+準備好了兩個段,~我們將這兩個段的信息作為~SS, ESP, CS, EIP~的內容依次壓堆疊,~然後再執行~lret~長返回指令,~就能跳轉到~ring 3~下運行目標程式碼段了：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=191, lastline=199]{../../src/chapter3/4/loader.S}
 \codecaption{hack RET~指令進行實際的跳轉}\label{CHpm_coder3_init}
@@ -522,70 +522,70 @@ JMP  & CPL $\le$ 調用門~DPL; RPL $\le$ 調用門~DPL\\
 
 \FIG{hack RET~實現從高權限到低權限的跳轉}{vb_run_9}{0.75\textwidth}
 
-上面這個例子僅僅演示了如何從高權限跳轉到低權限,~而沒有介紹如何轉移回高權限。直觀來講,~我們只需將圖~\ref{CHpm_coder3}~中的最後一條~JMP~指令替換成一條~CALL~調用門的指令即可。但是我們會看到,~帶有權限轉換的調用門轉移並不是那麼容易實現的。
+上面這個例子僅僅演示了如何從高權限跳轉到低權限,~而沒有介紹如何轉移回高權限。直觀來講,~我們只需將圖~\ref{CHpm_coder3}~中的最後一條~JMP~指令替換成一條~CALL~~call gate~的指令即可。但是我們會看到,~帶有權限轉換的~call gate~轉移並不是那麼容易實現的。
 
-下面我們來嘗試一下直接訪問調用門,~首先將門描述符的~DPL~改為~3~以滿足在~ring 3~程式碼段訪問調用門的條件。
+下面我們來嘗試一下直接訪問~call gate~,~首先將門描述符的~DPL~改為~3~以滿足在~ring 3~程式碼段訪問~call gate~的條件。
 
 \begin{Command}
 LABEL_CG_TEST:      Gate    SelectorCodeCG, 0, 0, (DA_386CGate + DA_DPL3)
 \end{Command}
 
-然後將圖~\ref{CHpm_coder3}~中最後一條~JMP~指令替換成對調用門的~CALL~指令：
+然後將圖~\ref{CHpm_coder3}~中最後一條~JMP~指令替換成對~call gate~的~CALL~指令：
 
 \begin{Command}
 lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 \end{Command}
 
-然後編譯運行一下,~看看能否得到我們想要的結果？答案是否定的,~我們看不到屏幕上打印出~'C'~字,~得到與圖~\ref{vb_main_4}~相同的結果。為什麼呢？主要是因為在~CALL~調用門的時候發生了程序棧的切換,~由于這個棧切換發生在~CALL~指令執行的過程中,~CALL~指令要訪問特殊的結構來得到新的棧信息,~不像~RET~指令僅僅讀取我們設置好的棧,~如果訪問出錯就會產生一個異常,~處理機無法處理這個異常就只好退出。我們下面一小節介紹在~CALL~調用門和~RET~的時候究竟發生了什麼事？需要什麼特殊結構的輔助才能實現帶有權限切換的調用門轉移？
+然後編譯運行一下,~看看能否得到我們想要的結果？答案是否定的,~我們看不到屏幕上打印出~'C'~字,~得到與圖~\ref{vb_main_4}~相同的結果。為什麼呢？主要是因為在~CALL~~call gate~的時候發生了程序堆疊的切換,~由于這個堆疊切換發生在~CALL~指令執行的過程中,~CALL~指令要訪問特殊的結構來得到新的堆疊信息,~不像~RET~指令僅僅讀取我們設置好的堆疊,~如果訪問出錯就會產生一個異常,~處理機無法處理這個異常就只好退出。我們下面一小節介紹在~CALL~~call gate~和~RET~的時候究竟發生了什麼事？需要什麼特殊結構的輔助才能實現帶有權限切換的~call gate~轉移？
 
-\subsection{棧切換和~TSS}
+\subsection{堆疊切換和~TSS}
 
-當使用調用門轉移到不同權限下的非一致程式碼段時,~處理機總會自動的切換到目標權限對應的棧。棧切換是為了避免高權限的棧空間被濫用導致棧空間不足而崩潰,~以及低權限的程序非法修改或者幹擾高權限程序的棧內容。
+當使用~call gate~轉移到不同權限下的非一致程式碼段時,~處理機總會自動的切換到目標權限對應的堆疊。堆疊切換是為了避免高權限的堆疊空間被濫用導致堆疊空間不足而崩潰,~以及低權限的程序非法修改或者幹擾高權限程序的堆疊內容。
 
-為了使棧切換能夠成功,~我們必須為任務中用到的每個權限都定義一個獨立的棧。在上一小節最後一個例子中,~我們實際已經定義了兩個堆棧段：~\code{LABEL\_STACK}~和~\code{LABEL\_STACKR3},~分別被~ring 0~和~ring 3~使用,~並且已經實現了從高權限轉移到低權限程序時的棧切換。從上面例子中我們看出,~使用~RET~指令時,~處理機從堆棧中得到目標權限的堆棧段選擇子（\code{SelectorStackR3}）和棧頂指針（\code{TopOfStackR3}）,~然後分別存儲到~SS~和~ESP~暫存器中,~就實現了棧切換。RET~指令能如此直接地實現棧切換的關鍵是~CALL~指令已經將調用者所在權限的棧信息壓到被調用者所在權限的棧裡。
+為了使堆疊切換能夠成功,~我們必須為任務中用到的每個權限都定義一個獨立的堆疊。在上一小節最後一個例子中,~我們實際已經定義了兩個堆堆疊段：~\code{LABEL\_STACK}~和~\code{LABEL\_STACKR3},~分別被~ring 0~和~ring 3~使用,~並且已經實現了從高權限轉移到低權限程序時的堆疊切換。從上面例子中我們看出,~使用~RET~指令時,~處理機從堆堆疊中得到目標權限的堆堆疊段選擇子（\code{SelectorStackR3}）和堆疊頂指標（\code{TopOfStackR3}）,~然後分別存儲到~SS~和~ESP~暫存器中,~就實現了堆疊切換。RET~指令能如此直接地實現堆疊切換的關鍵是~CALL~指令已經將呼叫者所在權限的堆疊信息壓到被呼叫者所在權限的堆疊裡。
 
 \FIG{32~位~TSS~資料結構}{tss}{.4\textwidth}
 
-但是在使用~CALL~指令時,~處理機不能從棧上獲得被調用者所在權限的棧信息,~就需要一個輔助的資料結構來幫助它獲得這些信息,~這個資料結構就是~TSS(Task-State Segment, 任務狀態段)~。當前任務的~TSS~中存儲著指向~0, 1, 2~權限棧的指針,~這個指針指向的內容包括一個堆棧段選擇子和棧頂指針,~如圖~\ref{tss}~中~SS*~和~ESP*~所示。TSS~的結構中並不包含~ring 3~的棧信息,~這是因為在使用調用門時,~不可能發生~ring 0, 1, 2~的程式碼通過~CALL~跳轉到~ring 3~的情況。這種情況只會發生在~RET~返回的時候,~而這時候我們只需要將~ring 3~的棧信息壓到棧裡就能實現跳轉（就像我們上一小節做的那樣）。
+但是在使用~CALL~指令時,~處理機不能從堆疊上獲得被呼叫者所在權限的堆疊信息,~就需要一個輔助的資料結構來幫助它獲得這些信息,~這個資料結構就是~TSS(Task-State Segment, 任務狀態段)~。當前任務的~TSS~中存儲著指向~0, 1, 2~權限堆疊的指標,~這個指標指向的內容包括一個堆堆疊段選擇子和堆疊頂指標,~如圖~\ref{tss}~中~SS*~和~ESP*~所示。TSS~的結構中並不包含~ring 3~的堆疊信息,~這是因為在使用~call gate~時,~不可能發生~ring 0, 1, 2~的程式碼通過~CALL~跳轉到~ring 3~的情況。這種情況只會發生在~RET~返回的時候,~而這時候我們只需要將~ring 3~的堆疊信息壓到堆疊裡就能實現跳轉（就像我們上一小節做的那樣）。
 
-當~TSS~被加載後,~這些指向的和棧相關的內容會被嚴格限制為只讀,~處理機在運行過程中不會修改它們。在一個跨權限的~CALL~調用結束返回時,~TSS~中的棧信息不會被修改,~所有被調用者堆棧的改變都會恢復原狀。在下一次~CALL~調用時,~處理機讀取的棧信息與前一次沒有任何不同。為每個權限準備的堆棧段空間必須足夠容納可能的多次調用產生的多重棧幀。
+當~TSS~被加載後,~這些指向的和堆疊相關的內容會被嚴格限制為只讀,~處理機在運行過程中不會修改它們。在一個跨權限的~CALL~呼叫結束返回時,~TSS~中的堆疊信息不會被修改,~所有被呼叫者堆堆疊的改變都會恢復原狀。在下一次~CALL~呼叫時,~處理機讀取的堆疊信息與前一次沒有任何不同。為每個權限準備的堆堆疊段空間必須足夠容納可能的多次呼叫產生的多重堆疊幀。
 
-由于在跨權限的調用過程中發生了棧切換,~在被調用者所在權限無法訪問調用者的棧,~所以調用者棧中的一些參數、返回位址等信息需要拷貝到被調用者棧中。有多少個參數需要被拷貝就是圖~\ref{callgate_desc}~中~Param. Count~域定義的。
+由于在跨權限的呼叫過程中發生了堆疊切換,~在被呼叫者所在權限無法訪問呼叫者的堆疊,~所以呼叫者堆疊中的一些參數、返回位址等信息需要拷貝到被呼叫者堆疊中。有多少個參數需要被拷貝就是圖~\ref{callgate_desc}~中~Param. Count~域定義的。
 
-當跨權限的調用發生時,~處理機要進行下列操作來切換堆棧和切換到目標權限運行：
+當跨權限的呼叫發生時,~處理機要進行下列操作來切換堆堆疊和切換到目標權限運行：
 
 \begin{enumerate}
-\item 依據目標段的~DPL（新的~CPL）從~TSS~中選擇新堆棧的指針（堆棧段選擇子和棧頂指針）；
-\item 從當前任務的~TSS~中讀取堆棧段選擇子（SS*）和棧頂指針（ESP*）。在讀取堆棧段選擇子、棧頂指針或者堆棧段描述符時發生的任何錯誤,~都會使處理機產生一個~\texttt{\#}TS（非法~TSS）異常。
-\item 對堆棧段描述符進行權限和類型檢驗,~如果通不過檢驗處理機同樣產生~\texttt{\#}TS~異常；
-\item 暫時保存當前~SS~和~ESP~暫存器中存儲的堆棧段選擇子和棧頂指針；
-\item 加載新的堆棧段選擇子和棧頂指針到~SS~和~ESP中；
-\item 把第~4~步保存的~SS~和~ESP~壓入新棧（被調用者棧）；
-\item 從舊棧（調用者棧）中復制調用門描述符中~Param. Count~個參數到新棧中。如果~PCount~為~0~,~什麼都不復制；
-\item 將返回位址指針（當前~CS~和~EIP~暫存器中的內容）壓到新棧中；
-\item 加載調用門中指定的段選擇子和指令指針到~CS~和~EIP~暫存器中,~開始執行被調用過程。
+\item 依據目標段的~DPL（新的~CPL）從~TSS~中選擇新堆堆疊的指標（堆堆疊段選擇子和堆疊頂指標）；
+\item 從當前任務的~TSS~中讀取堆堆疊段選擇子（SS*）和堆疊頂指標（ESP*）。在讀取堆堆疊段選擇子、堆疊頂指標或者堆堆疊段描述符時發生的任何錯誤,~都會使處理機產生一個~\texttt{\#}TS（非法~TSS）異常。
+\item 對堆堆疊段描述符進行權限和類型檢驗,~如果通不過檢驗處理機同樣產生~\texttt{\#}TS~異常；
+\item 暫時保存當前~SS~和~ESP~暫存器中存儲的堆堆疊段選擇子和堆疊頂指標；
+\item 加載新的堆堆疊段選擇子和堆疊頂指標到~SS~和~ESP中；
+\item 把第~4~步保存的~SS~和~ESP~壓入新堆疊（被呼叫者堆疊）；
+\item 從舊堆疊（呼叫者堆疊）中復制~call gate~描述符中~Param. Count~個參數到新堆疊中。如果~PCount~為~0~,~什麼都不復制；
+\item 將返回位址指標（當前~CS~和~EIP~暫存器中的內容）壓到新堆疊中；
+\item 加載~call gate~中指定的段選擇子和指令指標到~CS~和~EIP~暫存器中,~開始執行被呼叫過程。
 \end{enumerate}
 
-\FIG{跨權限調用時的棧切換}{callgate_stack}{.8\textwidth}
+\FIG{跨權限呼叫時的堆疊切換}{callgate_stack}{.8\textwidth}
 
-其中的棧切換過程如圖~\ref{callgate_stack}~所示。需要注意的是,~調用門描述符中的~PCount~域僅有~5~位,~就是說在棧切換過程中最多只能復制~31~個參數。如果需要傳遞更多參數,~可以傳遞一個指向某個資料結構的指針,~或者通過棧中保存的調用者棧信息來訪問舊棧中的參數。
+其中的堆疊切換過程如圖~\ref{callgate_stack}~所示。需要注意的是,~~call gate~描述符中的~PCount~域僅有~5~位,~就是說在堆疊切換過程中最多只能復制~31~個參數。如果需要傳遞更多參數,~可以傳遞一個指向某個資料結構的指標,~或者通過堆疊中保存的呼叫者堆疊信息來訪問舊堆疊中的參數。
 
-既然跨權限的調用那麼麻煩,~跨權限的返回也不會很簡單。在跨權限的返回指令執行時,~處理機的工作包含以下步驟：
+既然跨權限的呼叫那麼麻煩,~跨權限的返回也不會很簡單。在跨權限的返回指令執行時,~處理機的工作包含以下步驟：
 
 \begin{enumerate}
-\item 檢查保存在棧上的~CS~暫存器中的~RPL~域看返回時是否需要切換權限；
-\item 加載保存在棧上的~CS~和~EIP~暫存器信息（同時對段描述符和段選擇子的權限和類型進行檢驗）；
-\item 如果~RET~指令有參數計數操作數,~增加~ESP~的值跳過棧上的參數部分,~此時~ESP~將指向保存的調用者的~SS~和~ESP。RET~的參數計數操作數應與調用門中描述符中的~PCount~域相同;
-\item 加載~SS~和~ESP,~切換到調用者堆棧,~被調用者的~SS~和~ESP~將被丟棄（此時會進行堆棧段選擇子、棧頂指針和堆棧段描述符的權限和類型檢驗）；
-\item 如果~RET~指令有參數計數操作數,~增加~ESP~的值跳過棧上（調用者棧）的參數部分；
+\item 檢查保存在堆疊上的~CS~暫存器中的~RPL~域看返回時是否需要切換權限；
+\item 加載保存在堆疊上的~CS~和~EIP~暫存器信息（同時對段描述符和段選擇子的權限和類型進行檢驗）；
+\item 如果~RET~指令有參數計數操作數,~增加~ESP~的值跳過堆疊上的參數部分,~此時~ESP~將指向保存的呼叫者的~SS~和~ESP。RET~的參數計數操作數應與~call gate~中描述符中的~PCount~域相同;
+\item 加載~SS~和~ESP,~切換到呼叫者堆堆疊,~被呼叫者的~SS~和~ESP~將被丟棄（此時會進行堆堆疊段選擇子、堆疊頂指標和堆堆疊段描述符的權限和類型檢驗）；
+\item 如果~RET~指令有參數計數操作數,~增加~ESP~的值跳過堆疊上（呼叫者堆疊）的參數部分；
 \item 檢查~DS, ES, FS~和~GS~暫存器的內容,~如果某個暫存器指向的段的~DPL~小于當前權限~CPL（此規則不適用于一致程式碼段）,~該暫存器將加載一個空描述符。
 \end{enumerate}
 
-在返回時棧切換的操作可視為調用時棧操作的逆過程。
+在返回時堆疊切換的操作可視為呼叫時堆疊操作的逆過程。
 
-至此,~我們已經完整地描述了跨權限的調用和返回過程,~下面就來實現一段跨權限調用的示例程序。
+至此,~我們已經完整地描述了跨權限的呼叫和返回過程,~下面就來實現一段跨權限呼叫的示例程序。
 
-在第~\ref{CHpm_callgate}~的最後,~我們嘗試直接訪問調用門失敗,~主要原因是沒有準備~TSS~段,~因此我們只需要在其基礎上準備好~TSS~段並將其段選擇子加載到~TR~暫存器中即可。
+在第~\ref{CHpm_callgate}~的最後,~我們嘗試直接訪問~call gate~失敗,~主要原因是沒有準備~TSS~段,~因此我們只需要在其基礎上準備好~TSS~段並將其段選擇子加載到~TR~暫存器中即可。
 
 首先,~準備好~TSS~段,~及其段描述符和選擇子,~並加入初始化~TSS~段描述符的程式碼：
 
@@ -595,21 +595,21 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=144, lastline=145]{../../src/chapter3/5/loader.S}
 \codecaption{TSS~段內容及其描述符和選擇子和初始化程式碼(節自 chapter3/5/loader.S)}\label{CHpm_tss_desc}
 
-進入~ring 3~之前將~TSS~段選擇子加載到~TR~暫存器中,~這樣在~ring 3~中訪問調用門就可以實現跳轉了。
+進入~ring 3~之前將~TSS~段選擇子加載到~TR~暫存器中,~這樣在~ring 3~中訪問~call gate~就可以實現跳轉了。
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=227, lastline=232]{../../src/chapter3/5/loader.S}
 \codecaption{加載~TSS~段選擇子到~TR~暫存器(節自 chapter3/5/loader.S)}\label{CHpm_tss_load}
 
-將得到的程式碼編譯成鏡像,~運行結果如圖~\ref{vb_run_10}~所示。我們可以看到這次在圖~\ref{vb_run_9}~的基礎上多打印了一個~'C'~字然後陷入了死循環,~說明了我們成功達到了調用門跨權限轉移的目的。這個示例程序實現了從~ring 3~程式碼段轉移到~ring 0~程式碼段,~然後再返回~ring 3~進入死循環。
+將得到的程式碼編譯成鏡像,~運行結果如圖~\ref{vb_run_10}~所示。我們可以看到這次在圖~\ref{vb_run_9}~的基礎上多打印了一個~'C'~字然後陷入了死循環,~說明了我們成功達到了~call gate~跨權限轉移的目的。這個示例程序實現了從~ring 3~程式碼段轉移到~ring 0~程式碼段,~然後再返回~ring 3~進入死循環。
 
-\FIG{跨權限的調用門轉移}{vb_run_10}{.75\textwidth}
+\FIG{跨權限的~call gate~轉移}{vb_run_10}{.75\textwidth}
 
 為方便閱讀,~本節最終的~loader.S~全部程式碼如圖~\ref{CHpm_loader5}：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2]{../../src/chapter3/5/loader.S}
 \codecaption{chapter3/5/loader.S}\label{CHpm_loader5}
 
-\section{頁式存儲}
+\section{分頁式記憶體管理}
 
 保護模式一個非常重要的特性就是提供了虛擬記憶體機制。虛擬記憶體機制使每個應用程序都以為自己擁有完整連續的記憶體空間,~而事實上它可能是被分塊存放在物理記憶體甚至硬盤中。這極大地方便了大型應用程序的編程,~並且能更高效地利用物理記憶體。在具體實現上,~幾乎所有的體系結構都使用分頁機制作為基本方式。比如某應用程序需要使用~1GB~記憶體,~沒有虛擬記憶體機制的輔助,~在低于~1GB~記憶體的電腦上該程序就無法運行,~但是虛擬記憶體機制可以將該應用程序分成若幹“頁”,~僅僅將程序當前使用的頁調入物理記憶體中,~剩下的頁存放在硬盤上,~需要時再調入,~這就可以大大地減少物理記憶體的使用量。
 
@@ -637,7 +637,7 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 \subsection{啟動分頁機制}
 
-既然已經知道~IA-32~的分頁機制,~那麼我們就可以嘗試啟動它了。但是在啟動分頁機制之前,~仍然有一個問題需要回答：頁目錄項（PDE, Page Directory Entry）、頁表項（PTE, Page Table Entry）和頁目錄指針（CR3）的資料結構是什麼？因為只有將頁目錄、頁表和~CR3~設置正確,~我們才能正確地啟動和使用分頁機制,~所以必須知道它們的資料結構。
+既然已經知道~IA-32~的分頁機制,~那麼我們就可以嘗試啟動它了。但是在啟動分頁機制之前,~仍然有一個問題需要回答：頁目錄項（PDE, Page Directory Entry）、頁表項（PTE, Page Table Entry）和頁目錄指標（CR3）的資料結構是什麼？因為只有將頁目錄、頁表和~CR3~設置正確,~我們才能正確地啟動和使用分頁機制,~所以必須知道它們的資料結構。
 
 \subsubsection{PDE~和~PTE}
 
@@ -684,7 +684,7 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 在初始化頁目錄和頁表之後,~我們就將頁目錄基址~\code{PageDirBase}~賦給~CR3~（這裡我們先忽略了~CR3~的~PCD~和~PWD~標志位）；然後將~CR0~的最高位設置為~1~,~就開啟了~IA-32~處理機的分頁機制。
 
-最後,~在進入保護模式後,~馬上調用上面的函數打開分頁機制。
+最後,~在進入保護模式後,~馬上呼叫上面的函數打開分頁機制。
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=209, lastline=210]{../../src/chapter3/6/loader.S}
 \codecaption{進入保護模式後馬上打開分頁機制(節自 chapter3/6/loader.S)}
@@ -699,21 +699,21 @@ lcall   $(SelectorCGTest), $0  /* Call CODECG through call gate */
 
 \subsubsection{INT 15h, EAX=E820h~-~查詢記憶體分布圖}
 
-功能碼為~E820h~的~15h~中斷調用只能在真實模式下使用,~這個調用會返回所有安裝在主機上的~RAM,以及被~BIOS~所保留的物理記憶體範圍的記憶體分布。每次成功地調用這個接口都會返回一行物理位址信息,~其中包括一塊物理位址的範圍以及這段位址的類型（可否被操作系使用等）。
+功能碼為~E820h~的~15h~中斷呼叫只能在真實模式下使用,~這個呼叫會返回所有安裝在主機上的~RAM,以及被~BIOS~所保留的物理記憶體範圍的記憶體分布。每次成功地呼叫這個接口都會返回一行物理位址信息,~其中包括一塊物理位址的範圍以及這段位址的類型（可否被操作系使用等）。
 
-INT 15h, AX=E820h~和~INT 15h AH=88h~也可以返回記憶體分布信息,~但是在這些舊接口返回信息與~INT 15h, EAX=E820h~不同時,~應以~E820h~調用返回的信息為準。
+INT 15h, AX=E820h~和~INT 15h AH=88h~也可以返回記憶體分布信息,~但是在這些舊接口返回信息與~INT 15h, EAX=E820h~不同時,~應以~E820h~呼叫返回的信息為準。
 
 \begin{center}\begin{longtable}{lll}
 \caption[]{INT 15h, EAX=E820h~中斷的輸入}\label{e820_input}\\
 \hline
 EAX & 功能碼 & E820h\\
-EBX & 後續   & 包含為得到下一行物理位址的“後續值”（類似于鏈表中的~next~指針）。\\
-& & 如果是第一次調用,~EBX~必須為~0。\\
-ES:DI & 緩衝區指針 & 指向~BIOS~將要填充的位址範圍描述符(Address Range Descriptor)結構。\\
-ECX & 緩衝區大小 & 緩衝區指針所指向的位址範圍描述符結構的大小,~以~byte~為單位。\\
+EBX & 後續   & 包含為得到下一行物理位址的“後續值”（類似于鏈表中的~next~指標）。\\
+& & 如果是第一次呼叫,~EBX~必須為~0。\\
+ES:DI & 緩衝區指標 & 指向~BIOS~將要填充的位址範圍描述符(Address Range Descriptor)結構。\\
+ECX & 緩衝區大小 & 緩衝區指標所指向的位址範圍描述符結構的大小,~以~byte~為單位。\\
 & & 無論~ES:DI~所指向的結構如何,~BIOS~最多將會填充~ECX~~byte~。\\
-& & BIOS~以及調用者應該最小支持~20~個~byte~長,未來的實現將會擴展此限制。\\
-EDX & 簽名 & 'SMAP' - BIOS~將會使用此標志,~對調用者將要請求的記憶體分布信息進行\\
+& & BIOS~以及呼叫者應該最小支持~20~個~byte~長,未來的實現將會擴展此限制。\\
+EDX & 簽名 & 'SMAP' - BIOS~將會使用此標志,~對呼叫者將要請求的記憶體分布信息進行\\
 & & 校驗,~這些信息會被BIOS放置到ES:DI所指向的結構中。\\
 \hline
 \end{longtable}\end{center}
@@ -723,10 +723,10 @@ EDX & 簽名 & 'SMAP' - BIOS~將會使用此標志,~對調用者將要請求的�
 \hline
 CF & 進位標志 & 不進位(0)表示沒有錯誤,~否則則存在錯誤。\\
 EAX & 簽名   & 'SMAP'\\
-ES:DI & 緩衝區指針 & 返回的位址範圍描述符結構指針,~和輸入值相同。\\
+ES:DI & 緩衝區指標 & 返回的位址範圍描述符結構指標,~和輸入值相同。\\
 ECX & 緩衝區大小 & BIOS~填充到位址範圍描述符中的~byte~數量,~返回的最小值是~20~個~byte~。\\
 EBX & 後續 & 存放為得到下一個位址描述符所需要的"後續值",~這個值的實際形式倚賴于\\
-& & 具體的~BIOS~實現。調用者不必關心它的具體形式,~只需要在下次迭代時將\\
+& & 具體的~BIOS~實現。呼叫者不必關心它的具體形式,~只需要在下次迭代時將\\
 & & 其原樣放置到~EBX~中,~就可以通過它獲取下一個位址範圍描述符。注意,~\\
 & & BIOS~將返回後續值~0~並且無進位來表示已經得到最後一個位址範圍描述符。\\
 \hline
@@ -768,7 +768,7 @@ Other   Undefined               未定義~-~保留給以後使用。任何~Other
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=154, lastline=171]{../../src/chapter3/7/loader.S}
 \codecaption{用中斷~INT 15h~得到位址分布數據(節自 chapter3/7/loader.S)}
 
-得到位址分布數據的過程很簡單,~我們只需要設置好輸入的暫存器,~循環調用~INT 15h~中斷,~最終就能得到整個系統的位址分布信息,~這些信息會被存儲在~\code{\_AddMapBuf}~緩衝區中,~位址分布信息的條數被記錄在~\code{\_AMECount}~中。注意,~這段程式碼是運行在真實模式中,~故應該使用前面帶下劃線的符號來引用數據。
+得到位址分布數據的過程很簡單,~我們只需要設置好輸入的暫存器,~循環呼叫~INT 15h~中斷,~最終就能得到整個系統的位址分布信息,~這些信息會被存儲在~\code{\_AddMapBuf}~緩衝區中,~位址分布信息的條數被記錄在~\code{\_AMECount}~中。注意,~這段程式碼是運行在真實模式中,~故應該使用前面帶下劃線的符號來引用數據。
 
 為了驗證得到的數據是否正確,~我們可以將得到的位址分布信息打印到屏幕上,~下面這個函數就是做的這個工作：
 
@@ -793,10 +793,10 @@ Other   Undefined               未定義~-~保留給以後使用。任何~Other
 
 至于那些映射錯誤,~既然我們已經獲得了整個系統位址分布的情況（存儲在~\code{\_AddMapBuf}~中）,~只需要根據分布情況,~增加一些判斷來避免映射到不存在的記憶體位址即可,~這裡就不多做演示了。
 
-下面就可以在程序中調用我們新增加的函數：
+下面就可以在程序中呼叫我們新增加的函數：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=266, lastline=271]{../../src/chapter3/7/loader.S}
-\codecaption{調用顯示記憶體範圍和開啟分頁機制的函數(節自 chapter3/7/loader.S)}
+\codecaption{呼叫顯示記憶體範圍和開啟分頁機制的函數(節自 chapter3/7/loader.S)}
 
 將上面的程式碼編譯成鏡像,~用虛擬機加載執行的結果如圖~\ref{vb_run_11}~所示。在進入保護模式之後,~首先函數~\code{DispAddrMap}~打印出虛擬機系統的記憶體分布信息,~隨後是根據記憶體分布信息計算出來的記憶體大小。接著~\code{SetupPaging}~函數根據記憶體大小開啟處理機的分頁機制。雖然我們無法直接看到分頁機制啟動的效果,~但是接下來程式碼的正常執行可以告訴我們分頁機制的開啟是成功的。
 
@@ -816,7 +816,7 @@ LABEL_DESC_PAGETBL: Descriptor PageTblBase,        4096*8-1, DA_DRW /* 32K */
 
 下面我們就用一個小例子體驗一下簡單的虛擬記憶體機制：兩次訪問同一線性位址時,~執行的卻是不同的函數（還記得赫拉克利特的那句話嗎~\smiley~）。
 
-如何做呢？首先,~我們需要準備兩個函數,~每個函數各自打印函數自身名稱信息；其次,~因為我們希望兩次訪問同一線性位址執行不同函數,~那麼就需要準備兩套頁目錄和頁表,~兩套頁表中對應該線性位址頁的~PTE~中的基址（物理位址）分別指向我們上面準備的兩個不同的函數,~這樣切換頁表就能實現同一線性位址映射不同的函數上；最後呢,~在示例函數中切換頁表,~並在切換前後調用同一個線性位址上的函數,~看打印的信息是否相同。如果打印的信息不同,~就說明該線性位址在頁表切換前後分別映射到了不同的函數上。
+如何做呢？首先,~我們需要準備兩個函數,~每個函數各自打印函數自身名稱信息；其次,~因為我們希望兩次訪問同一線性位址執行不同函數,~那麼就需要準備兩套頁目錄和頁表,~兩套頁表中對應該線性位址頁的~PTE~中的基址（物理位址）分別指向我們上面準備的兩個不同的函數,~這樣切換頁表就能實現同一線性位址映射不同的函數上；最後呢,~在示例函數中切換頁表,~並在切換前後呼叫同一個線性位址上的函數,~看打印的信息是否相同。如果打印的信息不同,~就說明該線性位址在頁表切換前後分別映射到了不同的函數上。
 
 準備兩個打印自身信息的函數很簡單：
 
@@ -830,7 +830,7 @@ LABEL_DESC_PAGETBL: Descriptor PageTblBase,        4096*8-1, DA_DRW /* 32K */
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=13, lastline=20]{../../src/chapter3/8/loader.S}
 \codecaption{~4KB~對齊的物理位址(節自 chapter3/8/loader.S)}
 
-在上圖中,~~\code{FooPhyAddr}~和~\code{BarPhyAddr}~分別是~foo~和~bar~將要被拷貝到的目標位址。~\code{FuncLinAddr}~則是我們要執行函數調用所使用的線性位址。再加上有了兩個頁表對應的頁目錄和頁表基址,~我們就可以使用這些信息,~修改上一小節使用的~\code{SetupPaging}~函數,~分別設置兩個頁表了：
+在上圖中,~~\code{FooPhyAddr}~和~\code{BarPhyAddr}~分別是~foo~和~bar~將要被拷貝到的目標位址。~\code{FuncLinAddr}~則是我們要執行函數呼叫所使用的線性位址。再加上有了兩個頁表對應的頁目錄和頁表基址,~我們就可以使用這些信息,~修改上一小節使用的~\code{SetupPaging}~函數,~分別設置兩個頁表了：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=334, lastline=416]{../../src/chapter3/8/loader.S}
 \codecaption{設置兩個頁表並開啟分頁機制(節自 chapter3/8/loader.S)}
@@ -850,29 +850,29 @@ LABEL_DESC_PAGETBL: Descriptor PageTblBase,        4096*8-1, DA_DRW /* 32K */
 
 在~\code{SetupPaging}~函數最後,~我們依然使用第一個頁表,~然後開啟分頁機制。第二個頁表雖然被初始化了,~但是並沒有使用。
 
-最後,~我們寫一個示例函數來完成拷貝函數、切換頁表和調用同一線性位址的過程：
+最後,~我們寫一個示例函數來完成拷貝函數、切換頁表和呼叫同一線性位址的過程：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=464, lastline=500]{../../src/chapter3/8/loader.S}
-\codecaption{拷貝函數、切換頁表並調用同一線性位址的示例函數(節自 chapter3/8/loader.S)}
+\codecaption{拷貝函數、切換頁表並呼叫同一線性位址的示例函數(節自 chapter3/8/loader.S)}
 
 在函數~\code{VMDemo}~中,~我們首先拷貝函數~foo~和~bar~的記憶體到目標物理位址~FooPhyAddr~和~BarPhyAddr。由于~foo~和~bar~處于程式碼段,~如果想要拷貝成功,~就需要把程式碼段的屬性改為可讀,~即為~\code{LABEL\_DESC\_CODE32}~加上可讀屬性：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=32, lastline=33]{../../src/chapter3/8/loader.S}
 
-然後就可以將~DS~設置為程式碼段,~ES~設置為線性位址段,~將每個函數的長度、段偏移和目標物理位址（未分頁前線性位址和物理位址等同）作為~MemCpy~的參數,~執行函數調用就能完成拷貝。MemCpy~函數定義于庫文件~lib.h~中：
+然後就可以將~DS~設置為程式碼段,~ES~設置為線性位址段,~將每個函數的長度、段偏移和目標物理位址（未分頁前線性位址和物理位址等同）作為~MemCpy~的參數,~執行函數呼叫就能完成拷貝。MemCpy~函數定義于庫文件~lib.h~中：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=106, lastline=133]{../../src/chapter3/8/lib.h}
 \codecaption{MemCpy~函數定義(節自 chapter3/8/lib.h)}
 
-拷貝完成之後,~仍需要恢復~DS~和~ES~為原來的資料段。然後執行~\code{SetupPaging}~開啟分頁機制,~首先使用的是第一個頁表,~我們直接調用線性位址~\code{FuncLinAddr}~,~然後切換到第二個頁表,~再次調用線性位址~\code{FuncLinAddr}。我們可以看到,~這兩次調用的指令是一模一樣的,~如果沒有虛擬記憶體機制,~那麼兩次調用執行的效果應該是一樣的。
+拷貝完成之後,~仍需要恢復~DS~和~ES~為原來的資料段。然後執行~\code{SetupPaging}~開啟分頁機制,~首先使用的是第一個頁表,~我們直接呼叫線性位址~\code{FuncLinAddr}~,~然後切換到第二個頁表,~再次呼叫線性位址~\code{FuncLinAddr}。我們可以看到,~這兩次呼叫的指令是一模一樣的,~如果沒有虛擬記憶體機制,~那麼兩次呼叫執行的效果應該是一樣的。
 
-最後在程序中加入對~\code{VMDemo}~的調用：
+最後在程序中加入對~\code{VMDemo}~的呼叫：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=none, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=279, lastline=281]{../../src/chapter3/8/loader.S}
 
 \FIG{體驗虛擬記憶體}{vb_run_12}{0.75\textwidth}
 
-我們將上面的程式碼編譯成鏡像,~用虛擬機加載執行,~結果如圖~\ref{vb_run_12}~所示。圖中紅色的~Foo~和~Bar~都被打印出來,~說明~foo~函數和~bar~都被執行,~我們的頁表切換起作用了。這樣我們就可以看到,~在不同的頁表中,~同一個線性位址可能代表不同的物理位址,~使用該位址進行函數調用,~結果執行的可能是不同的函數。在一般的支持虛擬記憶體的多進程作業系統中,~所採用的也是類似的方法,~按照進程可能使用的空間大小為每個進程分配一個頁表,~進程切換的時候會進行頁表的切換,~這樣進程所見的記憶體就完全是自己的線性位址空間記憶體。在物理位址上增加了一層抽象層,~既方便了應用程序編程,~又能夠更好更安全地管理記憶體。
+我們將上面的程式碼編譯成鏡像,~用虛擬機加載執行,~結果如圖~\ref{vb_run_12}~所示。圖中紅色的~Foo~和~Bar~都被打印出來,~說明~foo~函數和~bar~都被執行,~我們的頁表切換起作用了。這樣我們就可以看到,~在不同的頁表中,~同一個線性位址可能代表不同的物理位址,~使用該位址進行函數呼叫,~結果執行的可能是不同的函數。在一般的支持虛擬記憶體的多進程作業系統中,~所採用的也是類似的方法,~按照進程可能使用的空間大小為每個進程分配一個頁表,~進程切換的時候會進行頁表的切換,~這樣進程所見的記憶體就完全是自己的線性位址空間記憶體。在物理位址上增加了一層抽象層,~既方便了應用程序編程,~又能夠更好更安全地管理記憶體。
 
 \section{結語}
 
