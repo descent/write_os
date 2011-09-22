@@ -1,5 +1,9 @@
 /*
    ref: Orange'S：一个操作系统的实现
+   add ltd test code.
+ */
+/*
+   ref: Orange'S：一个操作系统的实现
    do the 5M memory r/w
  */
 /* chapter3/1/loader.S
@@ -58,6 +62,7 @@ LABEL_BEGIN:
     movw     $0x100, %sp
     nop
     movw %ax, (LABEL_GO_BACK_TO_REAL+3) # modify segment value, indexed memory mode, ref  professional aeesmbly language p 102.
+    mov     $(SPValueInRealMode), %sp
 
     /* Initialize 16-bits code segment descriptor. */
     xor     %eax, %eax
@@ -133,7 +138,6 @@ LABEL_REAL_ENTRY:               # 從保護模式跳回到實模式就到了這�
         mov     %ax, %es
         mov     %ax, %ss
 
-#        mov     sp, [SPValueInRealMode]
 
         in      $0x92, %al
         and     $0b11111101, %al   #  close A20 line
@@ -197,14 +201,47 @@ LABEL_SEG_CODE32:
 #   push  %ebx                       # Multiboot data structure
 
 #	call	kmain
+	movl	$(80*(3-1)*2 + (2-1)*2), (video_addr_offset) # calu position.
+	#movl	$(160), (video_addr_offset) # calu position.
+        movw $0xabcd, %ax
+	call	DispAX
+
+	movl	$(80*(1-1)*2 + (1-1)*2), (video_addr_offset) # calu position.
+	#movl	$0, (video_addr_offset) # calu position.
+        movw $0x1234, %ax
+	call	DispAX
+
+
+/*
+	movl	$0, (video_addr_offset)
+        movb $0xb8, %al
+	call	DispAL_m
+
+	movl	$(80*(3-1)*2 + (2-1)*2), (video_addr_offset)
+        movb $0xc7, %al
+	call	DispAL_m
+
+	#call	DispReturn
+	movl	$160, (video_addr_offset)
 	call	DispReturn
-        #movb $0xa9, %al
-	#call	DispAL
+        movb $0xa9, %al
+	call	DispAL
+	call	DispReturn
+        movw $0xabcd, %ax
+	call	DispAX
+	call	DispReturn
+        movl (video_addr_offset), %ax
+	call	DispAX
+	call	DispReturn
+
+	addl	$2, (video_addr_offset)
+        movl (video_addr_offset), %ax
+	call	DispAX
 
 	call	TestRead
 	call	TestWrite
 	call	TestRead
-
+*/
 
     ljmpl     $SelectorCode16,$0
     # jmpl     $SelectorCode16,$0 # it works
@@ -252,6 +289,28 @@ TestWrite:
 	ret
 # TestWrite 結束----------------------------------------------------------
 
+DispAX:
+	pushl	%ebx
+	pushl	%ecx
+	pushl	%edx
+
+	movw	%ax, %dx
+	shr	$8, %ax # ah -> al
+	movl	$2, %ecx
+.b:
+	call DispAL_m
+	movw %dx, %ax
+	addl	$4, (video_addr_offset)
+#	call DispAL_m
+#  	andw 0xff, %ax
+	loop .b
+
+	popl	%edx
+	popl	%ecx
+	popl	%ebx
+
+	ret
+# end DispAX
 
 # ------------------------------------------------------------------------
 # 顯示 AL 中的數字
@@ -283,17 +342,66 @@ DispAL:
 .4:
 	#mov	[gs:edi], ax
 	mov	%ax, %gs:(%edi)
+#	mov	%ax, %gs:(video_addr_offset)
+	#mov	%ax, %gs:(0)
 	add	$2, %edi
+   
+#	addl	$2, (video_addr_offset)
 
 	mov	%dl, %al
 	loop	.begin
 	add	$2, %edi
+	#add	$2, (video_addr_offset)
 
 	popl	%edx
 	popl	%ecx
 
 	ret
 # DispAL 結束-------------------------------------------------------------
+
+DispAL_m:
+	pushl	%ebx
+	pushl	%ecx
+	pushl	%edx
+
+	movl (video_addr_offset), %ebx
+	movb	$0x0c, %ah # 0000: 黑底    1100: 紅字
+	movb	%al, %dl
+	shr	$4, %al
+	movl	$2, %ecx
+.begin_1:
+	andb	$0x0f, %al
+	cmp	$9, %al
+	ja	.31          # cf=0, zf=0, above 9 (>9)
+	#addb	$'0', %al
+	addb	$0x30, %al
+	jmp	.41
+.31:
+	sub	$0x0A, %al
+	#add	$'A', %al
+	add	$0x41, %al
+.41:
+	#mov	[gs:edi], ax
+	#mov	%ax, %gs:(%edi)
+#if 0
+        movw (video_addr_offset), %ax
+	call	DispReturn
+	call	DispAX
+#endif
+	movw	%ax, %gs:(%ebx)
+	#mov	%ax, %gs:(0)
+	add	$2, %ebx
+
+	mov	%dl, %al
+	loop	.begin_1
+	addl	$2, %ebx
+
+	popl	%edx
+	popl	%ecx
+	popl	%ebx
+
+	ret
+# DispAL_m 結束-------------------------------------------------------------
 
 
 # ------------------------------------------------------------------------
@@ -341,6 +449,7 @@ StrTest:                .ascii "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0"
 #OffsetStrTest           equ     StrTest - $$
 .set OffsetStrTest , (StrTest - LABEL_DATA)
 #DataLen                 equ     $ - LABEL_DATA
+video_addr_offset:              .int    0
 .set DataLen, .  - LABEL_DATA
 /* 32-bit global stack segment. */
 LABEL_STACK:

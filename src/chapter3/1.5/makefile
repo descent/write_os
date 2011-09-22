@@ -21,6 +21,12 @@ LDFILE_DOS=solrex_x86_dos.ld
 LDFLAGS_BOOT=-T$(LDFILE_BOOT)
 LDFLAGS_DOS=-T$(LDFILE_DOS)
 
+ldt.com: ldt.o 
+	$(LD) -o ldt.elf $(LDFLAGS_DOS) $^
+	$(OBJCOPY) $(TRIM_FLAGS) ldt.elf $@
+ldt.o: ldt.S
+	$(CC) $(CFLAGS) $<
+
 #5M_mem_rw.com: 5M_mem_rw.o k.o
 5M_mem_rw.com: 5M_mem_rw.o 
 	$(LD) -o 5M_mem_rw.elf $(LDFLAGS_DOS) $^
