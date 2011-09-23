@@ -1,0 +1,135 @@
+
+=== Rev 2 ===
+2008.11.29 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/8/pm.h,
+	* src/chapter3/8/boot.S,
+	* src/chapter3/8/loader.S,
+	* src/chapter3/8/Makefile,
+	* src/chapter3/8/solrex_x86_boot.ld,
+	* src/chapter3/8/solrex_x86_dos.ld,
+	* src/chapter3/8/lib.h: Source for chapter 3.5.
+	* src/chapter3/8/bochsrc.bxrc.
+	* pdf/images/vb_run_12.eps: Pictures for chapter 3.5.
+	* pdf/images/fat_map.eps: Fixed a bug in fat format figure.
+	* pdf/003.tex: Finished chapter 3.
+	* pdf/004.tex: Added Chapter 4.
+
+
+2008.11.02 Wenbo Yang <solrex@gmail.com>
+
+	* pdf/images/paging_ex.eps,
+	* pdf/images/pde_pte.eps: Pictures for chapter 3.5.
+	* pdf/003.tex: Updated to chapter 3.5.
+
+2008.10.19 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/[6, 7]/pm.h,
+	* src/chapter3/[6, 7]/boot.S,
+	* src/chapter3/[6, 7]/loader.S,
+	* src/chapter3/[6, 7]/Makefile,
+	* src/chapter3/[6, 7]/solrex_x86_boot.ld,
+	* src/chapter3/[6, 7]/solrex_x86_dos.ld,
+	* src/chapter3/7/lib.h: Source for chapter 3.5.
+	* src/chapter3/[6, 7]/bochsrc.bxrc.
+	* pdf/images/paging.eps,
+	* pdf/images/vb_run_11.eps: Pictures for chapter 3.5.
+
+2008.09.14 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/[4, 5]/pm.h,
+	* src/chapter3/[4, 5]/boot.S,
+	* src/chapter3/[4, 5]/loader.S,
+	* src/chapter3/[4, 5]/Makefile,
+	* src/chapter3/[4, 5]/solrex_x86_boot.ld,
+	* src/chapter3/[4, 5]/solrex_x86_dos.ld: Source for chapter 3.4.
+	* src/chapter3/[4, 5]/bochsrc.bxrc.
+	* pdf/images/tss.eps,
+	* pdf/images/callgate_stack.eps,
+	* pdf/images/vb_run_9.eps,
+	* pdf/images/vb_run_10.eps: Pictures for chapter 3.4.
+	* pdf/003.tex: Updated chapter 3.4.
+	* src/Makefile,
+	* Makefile: GP Makefile, for convenience.
+
+2008.09.07 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/3/pm.h,
+	* src/chapter3/3/boot.S,
+	* src/chapter3/3/loader.S,
+	* src/chapter3/3/Makefile,
+	* src/chapter3/3/solrex_x86_boot.ld,
+	* src/chapter3/3/solrex_x86_dos.ld: Source for chapter 3.4.
+	* src/chapter3/3/bochsrc.bxrc.
+	* pdf/images/callgate_desc.eps,
+	* pdf/images/vb_run_7.eps,
+	* pdf/images/vb_run_8.eps,
+	* pdf/images/vb_main_4.eps: Pictures for chapter 3.4.
+	* pdf/003.tex: Updated to chapter 3.4.
+
+2008.06.16 Wenbo Yang <solrex@gmail.com>
+
+	* src/chapter3/2/pm.h,
+	* src/chapter3/2/boot.S,
+	* src/chapter3/2/loader.S,
+	* src/chapter3/2/Makefile,
+	* src/chapter3/2/solrex_x86_boot.ld,
+	* src/chapter3/2/solrex_x86_dos.ld: Source for chapter 3.3.
+	* src/chapter3/2/bochsrc.bxrc.
+	* pdf/images/seg_selector.eps,
+	* pdf/images/vb_run_6.eps: Pictures for chapter 3.3.
+	* pdf/003.tex: Updated to chapter 3.3.
+
+2008.05.13 Wenbo Yang <solrex@gmail.com>
+
+	* Change dir hierarchy:
+	* src/: for source code. 
+	* pdf/: for book tex source.
+	* src/chapter3/1/pm.h,
+	* src/chapter3/1/boot.S,
+	* src/chapter3/1/loader.S,
+	* src/chapter3/1/Makefile,
+	* src/chapter3/1/solrex_x86_boot.ld,
+	* src/chapter3/1/solrex_x86_dos.ld: Source for chapter 3.2.
+	* src/chapter3/1/bochsrc.bxrc.
+	* pdf/003.tex: Tex source for chapter 3.
+
+2008.04.19 Wenbo Yang <solrex@gmail.com>
+
+	* pdf/001.tex,
+	* pdf/002.tex: Fix some errors and typos.
+	* pdf/000-foreword.tex: Move copyright declaration to 000-cover.tex.
+	* pdf/000-cover.tex: Change copyright policy, from by-nc-sa to by-nc-nd.
+
+=== Rev 1 ===
+2008.02.21 Wenbo Yang <solrex@gmail.com>
+	
+	* NEWS: Release revision 1.
+	* pdf/solrexbook.sty: Book tex style.
+	* pdf/utf8.cpx: Chinese captions in encoding utf8.
+	* pdf/WriteOS.tex: Main tex source file.
+	* pdf/000-cover.tex: Cover page.
+	* pdf/000-foreword.tex: Foreword page.
+	* pdf/000-preface.tex: Preface page.
+	* pdf/001.tex,
+	* pdf/002.tex: Chapters.
+	* Makefile: Makefile to build this book.
+	* pdf/images/*: Pictures.
+
+2008.01.09 Wenbo Yang <solrex@gmail.com>
+
+	* NEWS: Start this project.
+	* chapter2/1/boot.asm: Source from Yu's book.
+	* chapter2/1/boot.S,
+	* chapter2/1/Makefile,
+	* chapter2/1/solrex_x86.ld: Source for chapter 2, part 1.
+	* chapter2/1/solrex.img: Sample floppy image file.
+	* chapter2/2/boot.asm,
+	* chapter2/2/loader.asm: Source from Yu's book.
+	* chapter2/2/boot.S,
+	* chapter2/2/loader.S,  
+	* chapter2/2/solrex_x86_dos.ld,
+	* chapter2/2/solrex_x86_boot.ld,
+	* chapter2/2/Makefile: Source for chapter 2, part 2.
+	* chapter2/2/solrex.img: Sample floppy image file.
+	* chapter2/2/genfloppyimage: Tool for format a floppy image.

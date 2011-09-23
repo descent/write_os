@@ -1,0 +1,551 @@
+\chapter{最小的「作業系統」} \label{CHsmall}
+
+任何一個完善的作業系統都是從啟動磁區開始的, 這一章, 我們就關注如何寫一個啟動磁區, 以及如何將其寫入到軟碟片鏡像中。
+
+先介紹一下需要使用的工具：
+\begin{itemize}
+\item{系統：} Cent OS 5.1(RHEL 5.1)
+\item{使用工具：} gcc, binutils(as, ld, objcopy), dd, make, hexdump, vim, virtualbox
+\end{itemize}
+
+\section{Hello OS world!}\label{hello_OS_world}
+
+\BOXED{0.9\textwidth}{
+\danger\\ 本章節內容需要和~gcc, make~相關的~Linux C~語言編程以及~PC~匯編語言的基礎知識。\enddanger
+}
+
+\BOXED{0.9\textwidth}{
+\danger\\推薦預備閱讀：CS:APP（Computer Systems: A Programmer's Perspective, 深入理解計算機系統）第~3~章：Machine-Level Representation of Programs。\enddanger
+}
+
+很多編程書籍給出的第一個例子往往是在終端裡輸出一個字符串“Hello world!”, 那麼要寫作業系統的第一步給出的例子自然就是如何在屏幕上打印出一個字符串嘍。所以, 我們首先看《自己動手寫作業系統》一書中給出的第一個示例代碼, 在屏幕上打印“Hello OS world!”：
+
+\begin{Codefrag}
+    org    07c00h       ; 告訴編譯器程序加載到7c00處
+    mov    ax, cs
+    mov    ds, ax
+    mov    es, ax
+    call   DispStr      ; 呼叫顯示字符串例程
+    jmp    $            ; 無限循環
+DispStr:
+    mov    ax, BootMessage
+    mov    bp, ax       ; ES:BP = 串位址
+    mov    cx, 16       ; CX = 串長度
+    mov    ax, 01301h   ; AH = 13,  AL = 01h
+    mov    bx, 000ch    ; 頁號為0(BH = 0) 黑底紅字(BL = 0Ch,高亮)
+    mov    dl, 0
+    int    10h          ; 10h 號中斷
+    ret
+BootMessage:     db    "Hello, OS world!"
+times 510-($-$$) db    0 ; 填充剩下的空間, 使生成的二進制代碼恰好為512 byte 
+dw    0xaa55             ; 結束標志
+\end{Codefrag}
+\codecaption{《自》第一個實例代碼~boot.asm}\label{CHsmall_bootASM}
+
+\subsection{Intel~語法轉化為~AT\&T(GAS)~語法}
+
+上面~boot.asm~中代碼使用~Intel~風格的匯編語言寫成, 本也可以在~Linux~下使用同樣開源的~NASM~編譯, 但是鑑于很少有人在~Linux~下使用此匯編語法, 它在~Linux~平台上的擴展性和可調試性都不好（~GCC~不兼容）, 而且不是採用~Linux~平台上編譯習慣, 所以我把它改成了使用~GNU~工具鏈去編譯連接。這樣的話, 對以後使用~GNU~工具鏈編寫其它體系結構的~bootloader~也有幫助, 畢竟~NASM~沒有~GAS~用戶多（也許~\smiley）。
+
+上面的匯編源程序可以改寫成~AT\&T~風格的匯編源代碼：
+
+\begin{Codefrag}
+.code16               #使用16位模式匯編
+.text                 #代碼段開始
+    mov    %cs,%ax
+    mov    %ax,%ds
+    mov    %ax,%es
+    call   DispStr    #呼叫顯示字符串例程
+    jmp    .          #無限循環
+DispStr:
+    mov    $BootMessage, %ax
+    mov    %ax,%bp        #ES:BP = 串位址
+    mov    $16,%cx        #CX = 串長度
+    mov    $0x1301,%ax    #AH = 13,  AL = 01h
+    mov    $0x00c,%bx     #頁號為0(BH = 0) 黑底紅字(BL = 0Ch,高亮)
+    mov    $0,%dl
+    int    $0x10          #10h 號中斷
+    ret
+BootMessage:.ascii "Hello, OS world!"
+.org 510             #填充到~510~ byte 處
+.word 0xaa55         #結束標志
+\end{Codefrag}
+\codecaption{boot.S(chapter2/1/boot.S)}\label{CHsmall_bootS}
+
+\subsection{用~linker script~控制位址空間}
+
+但有一個問題,我們可以使用~\code{nasm boot.asm -o boot.bin}~命令將~boot.asm~直接編譯成二進制檔案, ~GAS~不能。不過~GAS~的不能恰好給開發者一個機會去分步地實現從匯編源代碼到二進制檔案這個過程, 使編譯更為靈活。下面請看~GAS~是如何通過~linker script~控制程序位址空間的：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../../src/chapter2/1/solrex_x86.ld}
+\codecaption{boot.S~的~linker script~(chapter2/1/solrex\_x86.ld)}\label{CHsmall_solrexLD}
+
+\BOXED{0.9\textwidth}{
+~~~~\textbf{~linker script~}~：~GNU~連接器~ld~的每一個連接過程都由~linker script~控制。~linker script~主要用于, 怎樣把輸入檔案內的~section~放入輸出檔案內, 並且控制輸出檔案內各部分在程序位址空間內的布局。連接器有個默認的內置~linker script~, 可以用命令~ld --verbose~查看。選項~-T~選項可以指定自己的~linker script~, 它將代替默認的~linker script~。
+}
+
+這個~linker script~的功能就是, 在連接的時候, 將程序入口設置為記憶體~\code{0x7c00}~的位置（~BOIS~將跳轉到這裡繼續啟動過程）, 相當于~boot.asm~中的~org 07c00h~一句。有人可能覺得麻煩, 還需要用一個腳本控制加載位址, 但是《自己動手寫作業系統》就給了一個很好的反例：《自》第~1.5~節代碼~1-2~,作者切換調試和運行模式時候需要對代碼進行注釋。
+
+\begin{Codefrag}
+;%define _BOOT_DEBUG_   ; 做 Boot Sector 時一定將此行注釋掉!將此行打開後用
+                        ; nasm Boot.asm -o Boot.com 做成一個.COM檔案易于調試
+
+%ifdef _BOOT_DEBUG_
+    org  0100h     ; 調試狀態, 做成 .COM 檔案, 可調試
+%else
+    org  07c00h    ; Boot 狀態, Bios 將把 Boot Sector 加載到 0:7C00 處並開始執行
+%endif
+
+    mov    ax, cs
+    mov    ds, ax
+    mov    es, ax
+    call   DispStr      ; 呼叫顯示字符串例程
+    jmp    $            ; 無限循環
+DispStr:
+    mov    ax, BootMessage
+    mov    bp, ax       ; ES:BP = 串位址
+    mov    cx, 16       ; CX = 串長度
+    mov    ax, 01301h   ; AH = 13,  AL = 01h
+    mov    bx, 000ch    ; 頁號為0(BH = 0) 黑底紅字(BL = 0Ch,高亮)
+    mov    dl, 0
+    int    10h          ; 10h 號中斷
+    ret
+BootMessage:     db    "Hello, OS world!"
+times 510-($-$$) db    0 ; 填充剩下的空間, 使生成的二進制代碼恰好為512 byte 
+dw    0xaa55             ; 結束標志
+\end{Codefrag}
+\codecaption{《自》代碼~1-2~(chapter2/1/boot.asm)}\label{CHsmall_bootASM1}
+
+而如果換成使用腳本控制程序位址空間, 只需要編譯時候呼叫不同腳本進行連接, 就能解決這個問題。這在嵌入式編程中是很常見的處理方式, 即使用不同的~linker script~一次~make~從一個源程序檔案生成分別運行在開發板上和軟件模擬器上的兩個二進制檔案 。
+
+\subsection{用~Makefile~編譯連接}
+
+下面的這個~Makefile~檔案, 就是我們用來自動編譯~boot.S~匯編源代碼的腳本檔案：
+
+\begin{Codefrag}
+CC=gcc
+LD=ld
+LDFILE=solrex_x86.ld    #使用上面提供的~linker script~solrex_x86.ld
+OBJCOPY=objcopy
+
+all: boot.img
+
+# Step 1: gcc 呼叫 as 將 boot.S 編譯成目標檔案 boot.o
+boot.o: boot.S
+        $(CC) -c boot.S
+
+# Step 2: ld 呼叫 linker script solrex_x86.ld 將 boot.o 連接成可執行檔案 boot.elf
+boot.elf: boot.o
+        $(LD) boot.o -o boot.elf -e c -T$(LDFILE)
+
+# Step 3: objcopy 移除 boot.elf 中沒有用的 section(.pdr,.comment,.note),
+#         strip 掉所有符號信息, 輸出為二進制檔案 boot.bin 。
+boot.bin : boot.elf
+        @$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary boot.elf boot.bin
+
+# Step 4: 生成可啟動軟碟片鏡像。 
+boot.img: boot.bin
+        @dd if=boot.bin of=boot.img bs=512 count=1             #用 boot.bin 生成鏡像檔案第一個磁區
+        # 在 bin 生成的鏡像檔案後補上空白, 最後成為合適大小的軟碟片鏡像
+        @dd if=/dev/zero of=boot.img skip=1 seek=1 bs=512 count=2879
+
+clean:
+        @rm -rf boot.o boot.elf boot.bin boot.img
+\end{Codefrag}
+\codecaption{boot.S~的~Makefile(chapter2/1/Makefile)}\label{CHsmall_Makefile}
+
+我們將上面內容保存成~Makefile~, 與圖~\ref{CHsmall_bootS}~所示~boog.S~和圖~\ref{CHsmall_solrexLD}~所示~solrex\_x86.ld~放在同一個目錄下, 然後在此目錄下使用下面命令編譯：
+
+\begin{Command}
+$ make
+gcc -c boot.S 
+ld boot.o -o boot.elf -Tsolrex_x86.ld
+1+0 records in
+1+0 records out
+512 bytes (512 B) copied, 3.1289e-05 seconds, 16.4 MB/s
+2879+0 records in
+2879+0 records out
+1474048 bytes (1.5 MB) copied, 0.0141508 seconds, 104 MB/s
+$ ls
+boot.asm  boot.elf  boot.o  Makefile    solrex_x86.ld
+boot.bin  boot.img  boot.S  solrex.img
+\end{Command}
+
+可以看到, 我們只需執行一條命令~\code{make}~就可以編譯、連接和直接生成可啟動的軟碟片鏡像檔案, 其間對源檔案的每一步處理也都一清二楚。不用任何商業軟件, 也不用自己寫任何轉換工具, 比如《自己動手寫作業系統》文中提到的~HD-COPY~和~Floopy Writer~都沒有使用到。 
+
+在這裡需要特別注意的是圖~\ref{CHsmall_Makefile}~中的~Step 4, 其實對這一步的解釋應該結合圖~\ref{bootsector1}~來查看。我們用~boot.S~編譯生成的~boot.bin~其實只是圖~\ref{bootsector1}~中所指的軟碟片的啟動磁區, 例如~boot.S~最後一行：
+\begin{Command}
+.word 0xaa55         #結束標志
+\end{Command}
+生成就是啟動磁區最後的~\code{0xaa55}~那兩個 byte , 而~boot.bin~的大小是~512~ byte , 正好是啟動磁區的大小。那麼~Step 4~的功能就是把~boot.bin~放入到一個空白軟碟片的啟動磁區, 這樣呢當虛擬機啟動時能識別出這是一張可啟動軟碟片, 並且執行我們在啟動磁區中寫入的打印代碼。
+
+為了驗證軟碟片鏡像檔案的正確性也可以先用
+\begin{Command}
+$ hexdump -x -n 512 boot.img
+\end{Command}
+將~boot.img~前~512~個 byte 打印出來, 可以看到~boot.img dump~的內容和《自》一書附送光盤中的~TINIX.IMG dump~的內容完全相同。
+這裡我們也顯然用不到~EditPlus~或者~UltraEdit~, 即使需要修改二進制碼, 也可以使用~hexedit, ghex2, khexedit~等工具對二進制檔案進行修改。
+
+下圖為使用命令行工具~hexedit~打開~boot.img~的窗口截圖, 從圖中我們可以看到, 左列是該行開頭與檔案頭對應的偏移位址, 中間一列是檔案的二進制內容, 最右列是檔案內容的~ASCII~顯示內容, 可以看到, 此界面與~UltraEdit~的十六進制編輯界面沒有本質不同。
+
+\FIGFIX{使用~hexedit~打開~boot.img}{hexedit}{0.75\textwidth}
+
+\FIGFIX{使用~kde~圖形界面工具~khexedit~打開~boot.img}{khexedit}{0.75\textwidth}
+
+\subsection{用虛擬機加載執行~boot.img}
+
+當我們生成~boot.img~之後, 仿照第~\ref{CHboot_fboot}~節中加載軟碟片鏡像的方法, 用虛擬機加載~boot.img:\\
+\FIGFIX{選擇啟動軟碟片鏡像~boot.img}{vb_set_6}{0.75\textwidth}
+
+\FIGFIX{虛擬機啟動後打印出紅色的“Hello OS world!”}{vb_run_2}{0.75\textwidth}
+
+我們看到虛擬機如我們所料的打印出了紅色的“Hello OS world!”字樣, 這說明我們以上的程序和編譯過程是正確的。
+
+\section{FAT~檔案系統}
+
+我們在上一節中介紹的內容, 僅僅是寫一個啟動磁區並將其放入軟碟片鏡像的合適位置。由于啟動磁區~512~ byte 的大小限制, 我們僅僅能寫入像打印一個字符串這樣的非常簡單的程序, 那麼如何突破~512~ byte 的限制呢？很顯然的答案是我們要利用其它的磁區, 將程序保存在其它磁區, 運行前將其加載到記憶體後再跳轉過去執行。那麼又一個問題產生了：程序在軟碟片上應該怎樣存儲呢？
+
+可能最直接最容易理解的存儲方式就是順序存儲, 即將一個大程序從啟動磁區開始按順序存儲在相鄰的磁區, 可能這樣需要的工作量最小, 在啟動時作業系統僅僅需要序列地將可執行代碼拷貝到記憶體中來繼續運行。可是經過簡單的思考我們就可以發現這樣做有幾個缺陷：1. 軟碟片中僅能存儲作業系統程序, 無法存儲其它內容；2. 我們必須使用二進制拷貝方式來制作軟碟片鏡像, 修改系統麻煩。
+
+那麼怎麼避免這兩個缺點呢？引入檔案系統可以讓我們在一張軟碟片上存儲不同的檔案, 並提供檔案管理功能, 可以讓我們避免上述的兩個缺點。在使用某種檔案系統對軟碟片格式化之後, 我們可以像普通軟碟片一樣使用它來存儲多個檔案和目錄, 為了使用軟碟片上的檔案, 我們給啟動磁區的代碼加上尋找檔案和加載執行檔案功能, 讓啟動磁區將系統控制權轉移給軟碟片上的某個檔案, 這樣突破啟動磁區~512~ byte 大小的限制。
+
+\subsection{FAT12~檔案系統}
+
+FAT(File Allocation Table)~檔案系統規格在~20~世紀~70~年代末和~80~年代初形成, 是微軟的~MS-DOS~作業系統使用的檔案系統格式。它的初衷是為小于~500K~容量的軟碟片制定的簡單檔案系統, 但在將近三十年的發展過程中, 它已經被一次次修改加強以支持更大的存儲媒體。在目前主要有三種~FAT~檔案系統類型：FAT12, FAT16~和~FAT32。這幾種類型最基本的區別就像它們的名字字面區別一樣, 主要在于大小, 即盤上~FAT~表的記錄項所佔的 bit 數。FAT12~的記錄項佔~12~ bit , FAT16~佔~16~ bit , FAT32~佔~32~ bit 。
+
+由于~FAT12~最為簡單和易實施, 這裡我們僅簡單介紹~FAT12~檔案系統, 想要了解更多~FAT~檔案系統知識的話, 可以到~\url{http://www.microsoft.com/whdc/system/platform/firmware/fatgen.mspx}~下載微軟發布的~FAT~檔案系統官方文檔。
+
+FAT12~檔案系統和其它檔案系統一樣, 都將磁盤劃分為層次進行管理。從邏輯上劃分, 一般將磁盤劃分為盤符, 目錄和檔案；從抽象物理結構來講, 將磁盤劃分為分區, 簇和磁區。那麼, 如何將邏輯上的目錄和檔案映射到物理上實際的簇和磁區, 就是檔案系統要解決的問題。
+
+如果讓虛擬機直接讀取我們上一節生成的可啟動軟碟片鏡像, 或者將~boot.img~軟碟片用~\code{mount -o loop boot.img mountdir/}~掛載到某個目錄上, 系統肯定會報出“軟碟片未格式化”或者“檔案格式不可識別”的錯誤。這是因為任何系統可讀取的軟碟片都是被格式化過的, 而我們的~boot.img~是一個非常原始的軟碟片鏡像。那麼如何才能使軟碟片被識別為~FAT12~格式的軟碟片並且可以像普通軟碟片一樣存取呢？
+
+系統在讀取一張軟碟片的時候, 會讀取軟碟片上存儲的一些關于檔案系統的信息, 軟碟片格式化的過程也就是系統把檔案系統信息寫入到軟碟片上的過程。但是我們不能讓系統來格式化我們的~boot.img~, 如果那樣的話, 我們寫入的啟動程序也會被擦除。所以呢, 我們需要自己對軟碟片進行格式化。\blacksmiley 可能有人看到這裡就會很沮喪, 天那, 那該有多麻煩啊！不過我相信在讀完以下內容以後你會歡呼雀躍, 啊哈, 原來檔案系統挺簡單的嘛！
+
+\subsection{啟動磁區與~BPB}
+
+FAT~檔案系統的主要信息, 都被提供在前幾個磁區內, 其中第~0~號磁區尤其重要。在這個磁區內隱藏著一個叫做~BPB(BIOS Parameter Block)~的資料結構, 一旦我們把這個資料結構寫對了, 格式化過程也基本完成了 \smiley。下面這個表中所示內容, 主要就是啟動磁區的~BPB~資料結構。
+
+\texttt{
+\begin{center}\begin{longtable}{lccll}
+\caption[]{啟動磁區的~BPB~資料結構和其它內容}\label{bootsec_BPB}\\
+\hline
+名稱 &偏移 &大小 & 描述 & Solrex.img\\
+     &bytes&bytes&      & 檔案中的值\\
+\hline
+BS\_jmpBoot     & 0  &  3 & 跳轉指令, 用于跳過以下的磁區信息        & jmp LABEL\_START \\
+                &    &    &                                         & nop \\
+\hline
+BS\_OEMName     &  3 &  8 & 廠商名                                  & "WB. YANG"\\
+\hline
+BPB\_BytesPerSec& 11 &  2 & 磁區大小（ byte ）, 應為 512              & 512\\
+\hline
+BPB\_secPerClus & 13 &  1 & 簇的磁區數, 應為 2 的冪, FAT12 為 1     & 1\\
+\hline
+BPB\_RsvdSecCnt & 14 &  2 & 保留磁區, FAT12/16 應為 1               & 1\\
+\hline
+BPB\_NumFATs    & 16 &  1 & FAT 結構數目, 一般為 2                  & 2\\
+\hline
+BPB\_RootEntCnt & 17 &  2 & 根目錄項目數, FAT12 為 224              & 224\\
+\hline
+BPB\_TotSec16   & 19 &  2 & 磁區總數, 1.44M 軟碟片為 2880             & 2880\\
+\hline
+BPB\_Media      & 21 &  1 & 設備類型, 1.44M 軟碟片為 F0h              & 0xf0\\
+\hline
+BPB\_FATSz16    & 22 &  2 & FAT 佔用磁區數, 9                       & 9\\
+\hline
+BPB\_SecPerTrk  & 24 &  2 & 磁道磁區數, 18                          & 18\\
+\hline
+BPB\_NumHeads   & 26 &  2 & 磁頭數, 2                               & 2\\
+\hline
+BPB\_HiddSec    & 28 &  4 & 隱藏磁區, 默認為 0                      & 0\\
+\hline
+BPB\_TotSec32   & 32 &  4 & 如果~BPB\_TotSec16~為~0, 它記錄總磁區數 & 0\\
+\hline
+\multicolumn{5}{c}{下面的磁區頭信息~FAT12/FAT16~與~FAT32 不同}\\
+\hline
+BS\_DrvNum      & 36 &  1 & 中斷~0x13~的驅動器參數, 0~為軟碟片        & 0\\
+\hline
+BS\_Reserved1   & 37 &  1 & Windows NT 使用, 0                      & 0\\
+\hline
+BS\_BootSig     & 38 &  1 & 擴展引導標記~(29h), 指明此後~3~個域可用 & 0x29\\
+\hline
+BS\_VolID       & 39 &  4 & 卷標序列號, 00000000h                   & 0\\
+\hline
+BS\_VolLab      & 43 & 11 & 卷標, 11  byte , 必須用空格 20h 補齊      & "Solrex 0.01"\\
+\hline
+BS\_FilSysType  & 54 &  8 & 檔案系統標志, "FAT12~~~"                & "FAT12~~~"\\
+\hline
+\multicolumn{5}{c}{以下為非磁區頭信息部分}\\
+\hline
+啟動代碼及其它  & 62 & 448 & 啟動代碼、數據及填充字符               & mov \%cs,\%ax...\\
+\hline
+啟動磁區標識符  & 510 &  2 & 可啟動磁區標志, 0xAA55                 & 0xaa55\\
+\hline
+\end{longtable}\end{center}
+}
+
+哇, 天那, 這個~BPB~看起來很多東西的嘛, 怎麼寫啊？其實寫入這些信息很簡單, 因為它們都是固定不變的內容, 用下面的代碼就可以實現。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=21, lastline=45]{../../src/chapter2/2/boot.S}
+\codecaption{啟動磁區頭的組合語言程式碼(節自 chapter2/2/boot.S)}\label{CHsmall_bootS1}
+
+在上面的組合語言程式碼中, 我們只是順序地用字符填充了啟動磁區頭的資料結構, 填充的內容與表~\ref{bootsec_BPB}~中最後一列的內容相對應。把圖~\ref{CHsmall_bootS1}~中所示代碼添加到圖~\ref{CHsmall_bootS}~的第二行和第三行之間, 然後再~make~, 就能得到一張已經被格式化, 可啟動也可存儲檔案的軟碟片, 就是既可以使用~\code{mount -o loop boot.img mountdir/}~命令在普通~Linux~系統裡掛載, 也可用作虛擬機啟動的軟碟片鏡像檔案。
+
+\subsection{FAT12~資料結構}
+
+在上一個小節裡, 我們制作出了可以當作普通軟碟片使用的啟動軟碟片, 這樣我們就可以在這張軟碟片上存儲多個檔案了。可是還有一步要求我們沒有達到, 怎樣尋找存儲的某個引導檔案並將其加載到記憶體中運行呢？這就涉及到~FAT12~檔案系統中檔案的存儲方式了, 需要我們了解一些~FAT~資料結構和目錄結構的知識。
+
+%FAT~檔案系統對存儲空間分配的最小單位是''簇``, 因此檔案在佔用存儲空間時, 基本單位是簇而不是 byte 。即使檔案僅僅有~1~ byte 大小, 系統也必須分給它一個最小存儲單元
+
+FAT~檔案系統對存儲空間分配的最小單位是「簇」, 因此檔案在佔用存儲空間時, 基本單位是簇而不是 byte。即使檔案僅僅有~1~ byte 大小, 系統也必須分給它一個最小存儲單元——簇。由表~\ref{bootsec_BPB}~中的~BPB\_secPerClus~和~BPB\_BytsPerSec~相乘可以得到每簇所包含的 byte 數, 可見我們設置的是每簇包含~1*512=512~個 byte, 恰好是每簇包含一個磁區。
+
+
+
+存儲空間分配的最小單位確定了, 那麼~FAT~是如何分配和管理這些存儲空間的呢？FAT
+的存儲空間管理是透過管理~FAT~表來實現的, ~FAT~表一般位于啟動磁區之後, 根目錄之前的若幹個磁區, 而且一般是兩個表。從根目錄區的下一個簇開始, 每個簇按照它在磁盤上的位置映射到~FAT~表裡。FAT~檔案系統的存儲結構粗略上來講如圖~\ref{fat_map}~所示。
+
+\FIG{FAT~檔案系統存儲結構圖}{fat_map}{5cm}
+
+FAT~表的表項有點兒像資料結構中的單向鏈表節點的~next~指標, 先回憶一下, 單向鏈表節點的資料結構（C~語言）是：
+
+\begin{Command}
+struct node {
+  char * data;
+  struct node *next;
+};
+\end{Command}
+在鏈表中, ~next~指標指向的是下一個相鄰節點。那麼~FAT~表與鏈表有什麼區別呢？首先, ~FAT~表將~next~指標集中管理, 放在一起被稱為~FAT~表；其次, ~FAT~表項指向的是固定大小的檔案“簇”(data~段), 而且每個檔案簇都有自己對應的~FAT~表項。由于每個檔案簇都有自己的~FAT~表項, 這個表項可能指向另一個檔案簇, 所以~FAT~表項所佔 byte 的多少就決定了~FAT~表最大能管理多少內存, ~FAT12~的~FAT~表項有~12~個 bit , 大約能管理~$2^{12}-$~個檔案簇。
+
+一個檔案往往要佔據多個簇, 只要我們知道這個檔案的第一個簇, 就可以到~FAT~表裡查詢該簇對應的~FAT~表項, 該表項的內容一般就是此檔案下一個簇號。如果該表項的值大于~\code{0xff8}~, 則表示該簇是檔案最後一個簇, 相當于單向鏈表節點的~next~指標為~NULL；如果該表項的值是~\code{0xff7}~則表示它是一個壞簇。這就是~\textbf{檔案的鏈式存儲}~。
+
+\subsection{FAT12~根目錄結構}
+
+怎樣讀取一個檔案我們知道了, 但是如何找到某個檔案, 即如何得到該檔案對應的第一個簇呢？這就到目錄結構派上用場的時候了, 為了簡單起見, 我們這裡只介紹根目錄結構。
+
+如圖~\ref{fat_map}~所示, 對于~FAT12/16, 根目錄存儲在磁盤中固定的地方, 緊跟在最後一個~FAT~表之後。根目錄的磁區數也是固定的, 可以根據~BPB\_RootEntCnt~計算得出：
+\begin{Command}
+RootDirSectors = ((BPB_RootEntCnt * 32) + (BPB_BytesPerSec - 1)) / BPB_BytsPerSec
+\end{Command}
+根目錄的磁區號是相對于該~FAT~卷啟動磁區的偏移量：
+\begin{Command}
+FirstRootDirSecNum = BPB_RsvdSecCnt + (BPB_NumFATs * BPB_FATSz16)
+\end{Command}
+
+FAT~根目錄其實就是一個由~32-bytes~的線性表構成的“檔案”, 其每一個條目代表著一個檔案, 這個~32-bytes~目錄項的格式如圖~\ref{fat12_root}~所示。
+
+\texttt{
+\begin{center}\begin{longtable}{lccll}
+\caption[]{根目錄的條目格式}\label{fat12_root}\\
+\hline
+名稱 & 偏移(bytes) & 長度(bytes) & 描述 & 舉例(loader.bin)\\
+\hline
+DIR\_Name     & 0    & 0xb & 檔案名~8~ byte , 擴展名~3~ byte  & "LOADER□□BIN"\\
+\hline
+DIR\_Attr     & 0xb  & 1  & 檔案屬性 & 0x20\\
+\hline
+保留位        & 0xc  & 10 & 保留位   & 0\\
+\hline
+DIR\_WrtTime  & 0x16 & 2  & 最後一次寫入時間 & 0x7a5a\\
+\hline
+DIR\_WrtDate  & 0x18 & 2  & 最後一次寫入日期 & 0x3188\\
+\hline
+DIR\_FstClus  & 0x1a & 2  & 此目錄項的開始簇編號 & 0x0002\\
+\hline
+DIR\_FileSize & 0x1c & 4  & 檔案大小 & 0x000000f\\
+\hline
+\end{longtable}\end{center}
+}
+
+知道了這些, 我們就得到了足夠的信息去在磁盤上尋找某個檔案, 在磁盤根目錄搜索並讀取某個檔案的步驟大致如下：
+
+\begin{enumerate}
+\item 確定根目錄區的開始磁區和結束磁區；
+\item 遍歷根目錄區, 尋找與被搜索名相對應根目錄項；
+\item 找到該目錄項對應的開始簇編號；
+\item 以檔案的開始簇為根據尋找整個檔案的鏈接簇, 並依次讀取每個簇的內容。
+\end{enumerate}
+
+\section{讓啟動磁區加載引導檔案}
+
+有了~FAT12~檔案系統的相關知識之後, 我們就可以跨越~512~ byte 的限制, 從檔案系統中加載檔案並執行了。
+
+\subsection{一個最簡單的~loader}
+
+為做測試用, 我們寫一個最小的程序, 讓它顯示一個字符, 然後進入死循環, 這樣如果~loader~加載成功並成功執行的話, 就能看到這個字符。
+
+新建一個檔案~loader.S, 內容如圖~\ref{CHsmall_loaderS}~所示。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../src/chapter2/2/loader.S}
+\codecaption{一個最簡單的~loader(chapter2/2/loader.S)}\label{CHsmall_loaderS}
+
+這個程序在連接時需要使用連接檔案~solrex\_x86\_dos.ld, 如圖~\ref{CHsmall_solrexLD1}~所示, 這樣能更改代碼段的偏移量為~\code{0x0100}。這樣做的目的僅僅是為了與~DOS~系統兼容, 可以用此代碼生成在~DOS~下可調試的二進制檔案。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../src/chapter2/2/solrex_x86_dos.ld}
+\codecaption{一個最簡單的~loader(chapter2/2/solrex\_x86\_dos.ld)}\label{CHsmall_solrexLD1}
+
+\subsection{讀取軟碟片磁區的~BIOS 13h~號中斷}
+
+我們知道了如何在磁盤上尋找一個檔案, 但是該如何將磁盤上內容讀取到記憶體中去呢？我們在第~\ref{hello_OS_world}~節中寫的啟動磁區不需要自己寫代碼來讀取, 是因為它每次都被加載到記憶體的固定位置, 計算機在發現可啟動標識~\code{0xaa55}~的時候自動就會做加載工作。但如果我們想自己從軟碟片上讀取檔案的時候, 就需要使用到底層~BIOS~系統提供的磁盤讀取功能了。這裡, 我們主要用到~BIOS 13h~號中斷。
+
+表~\ref{bios_13}~所示, 就是~BIOS 13~號中斷的參數表。從表中我們可以看到, 讀取磁盤驅動器所需要的參數是磁道（柱面）號、磁頭號以及當前磁道上的磁區號三個分量。由第~\ref{disk_structure}~節所介紹的磁盤知識, 我們可以得到計算這三個分量的公式~\ref{sec_cal}~。
+
+\begin{equation}\label{sec_cal}
+\frac{\mbox{磁區號}}{18(\mbox{每磁道磁區數})} =
+  \begin{cases}
+    \mbox{商~Q} = \begin{cases}
+	  \mbox{柱面號} = Q~>>~1\\
+	  \mbox{磁頭號} = Q~\&~1\\
+	\end{cases}\\
+	\mbox{餘數~R} \Longrightarrow \mbox{~起始磁區號} = R + 1\\
+  \end{cases}
+\end{equation}
+
+\texttt{
+\begin{center}\begin{longtable}{c|c|l|l|l}
+\caption[]{BIOS 13h~號中斷的參數表}\label{bios_13}\\
+\hline
+中斷號 & AH & 功能 & 呼叫參數 & 返回參數\\
+\hline
+\multirow{21}[42]{*}{13} & 0 & 磁盤復位 & DL = 驅動器號 & 失敗：\\
+   &   &  & 00, 01 為軟碟片, 80h, 81h, $\cdots$~為硬盤 & AH = 錯誤碼\bigstrut\\
+\cline{2-5}
+ &1 & 讀磁盤驅動器狀態 & & AH=狀態 byte \bigstrut\\
+\cline{2-5}
+   & 2 & 讀磁盤磁區 & AL = 磁區數 & 讀成功：\\
+   &   &            & $(CL)_{6,7}(CH)_{0 \sim 7}=$~柱面號 & AH = 0\\
+   &   &            & $(CL)_{0 \sim 5}=$~磁區號 & AL = 讀取的磁區數\\
+   &   &            & DH/DL = 磁頭號/驅動器號 & 讀失敗：\\
+   &   &            & ES:BX = 數據緩衝區地址 & AH = 錯誤碼\bigstrut\\
+\cline{2-5}
+   & 3 & 寫磁盤磁區 & 同上 & 寫成功：\\
+   &   &            &   & AH = 0\\
+   &   &            &  & AL = 寫入的磁區數\\
+   &   &            &  & 寫失敗：\\
+   &   &            &  & AH = 錯誤碼\bigstrut\\
+\cline{2-5}
+   & 4 & 檢驗磁盤磁區 & AL = 磁區數 & 成功：\\
+   &   &            & $(CL)_{6,7}(CH)_{0 \sim 7}=$~柱面號 & AH = 0\\
+   &   &            & $(CL)_{0 \sim 5}=$~磁區號 & AL = 檢驗的磁區數\\
+   &   &            & DH/DL = 磁頭號/驅動器號 & 失敗：AH = 錯誤碼\bigstrut\\
+\cline{2-5}
+   & 5 & 格式化盤磁道 & AL = 磁區數 & 成功：\\
+   &   &            & $(CL)_{6,7}(CH)_{0 \sim 7}=$~柱面號 & AH = 0\\
+   &   &            & $(CL)_{0 \sim 5}=$~磁區號 & 失敗：\\
+   &   &            & DH/DL = 磁頭號/驅動器號 & AH = 錯誤碼\\
+   &   &            & ES:BX = 格式化參數表指標 & \\
+\hline
+\end{longtable}\end{center}
+}
+
+知道了這些, 我們就可以寫一個讀取軟碟片磁區的子函數了：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=209, lastline=246]{../src/chapter2/2/boot.S}
+\codecaption{讀取軟碟片磁區的函數(節自 chapter2/2/boot.S)}\label{CHsmall_readsec}
+
+\subsection{搜索~loader.bin}
+
+讀取磁區的子函數寫好了, 下面我們編寫在軟碟片中搜索~loader.bin~的代碼：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=62, lastline=140]{../src/chapter2/2/boot.S}
+\codecaption{搜索~loader.bin~的代碼片段(節自 chapter2/2/boot.S)}\label{CHsmall_findloader}
+
+這段代碼的功能就是我們前面提到過的, 遍歷根目錄的所有磁區, 將每個磁區加載入記憶體, 然後從中尋找檔案名為~loader.bin~的條目, 直到找到為止。找到之後, 計算出~loader.bin~的起始磁區號。其中用到的變量和字符串的定義見圖~\ref{CHsmall_variables}~中代碼片段的定義。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=12, lastline=18]{../src/chapter2/2/boot.S}
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=174, lastline=190]{../src/chapter2/2/boot.S}
+\codecaption{搜索~loader.bin~使用的變量定義(節自 chapter2/2/boot.S)}\label{CHsmall_variables}
+
+由于在代碼中有一些打印工作, 我們寫了一個函數專門做這項工作。為了節省代碼長度, 被打印字符串的長度都設置為~9~ byte , 不夠則用空格補齊, 這樣就相當于一個備用的二維數組, 通過數字定位要打印的字符串, 很方便。打印字符串的函數~DispStr~見圖~\ref{CHsmall_DispStr}~, 呼叫它的時候需要從寄存器~dh~傳入參數字符串序號。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=190, lastline=208]{../src/chapter2/2/boot.S}
+\codecaption{打印字符串函數~DispStr~(節自 chapter2/2/boot.S)}\label{CHsmall_DispStr}
+
+\subsection{加載~loader~入記憶體}
+
+在尋找到~loader.bin~之後, 就需要把它裝入記憶體。現在我們已經有了~loader.bin~的起始磁區號, 利用這個磁區號可以做兩件事：一, 把起始磁區裝入記憶體；二, 通過它找到~FAT~中的條目, 從而找到~loader.bin~檔案所佔用的其它磁區。
+
+這裡, 我們把~loader.bin~裝入記憶體中的~BaseOfLoader:OffsetOfLoader~處, 但是在圖~\ref{CHsmall_findloader}~中我們將根目錄區也是裝載到這個位置。因為在找到~loader.bin~之後, 該記憶體區域對我們已經沒有用處了, 所以它盡可以被覆蓋。
+
+我們已經知道了如何裝入一個磁區, 但是從~FAT~表中尋找其它的磁區還是一件麻煩的事情, 所以我們寫了一個函數~GetFATEntry~來專門做這件事情, 函數的輸入是磁區號, 輸出是其對應的~FAT~項的值, 見圖~\ref{CHsmall_GetFATEntry}。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=246, lastline=291]{../src/chapter2/2/boot.S}
+\codecaption{尋找~FAT~項的函數~GetFATEntry~(節自 chapter2/2/boot.S)}\label{CHsmall_GetFATEntry}
+
+這裡有一個對磁區號判斷是奇是偶的問題, 因為~FAT12~的每個表項是~12~位, 即~1.5~個 byte , 而我們這裡是用字（2~ byte ）來讀每個表項的, 那麼讀到的表項可能在高~12~位或者低~12~位, 就要用磁區號的奇偶來判斷應該取哪~12~位。由于磁區號*3/2~的商就是對應表項的偏移量, 餘數代表著是否多半個 byte , 如果存在餘數~1~, 則取高~12~位為表項值；如果餘數為~0, 則取低~12~位作為表項值。舉個具體的例子, 下面是一個真實的~FAT12~表項內容（兩行是分別用 byte 和字來表示的結果）：
+\begin{Command}
+0000200: 00 00 00 00 40 00 FF 0F
+0000200:  0000  0000  0040  0FFF
+\end{Command}
+我們來找磁區號~3~對應的~FAT12~表項。3*3/2 = 4...1, 按照字來讀取偏移~4~對應的地址, 我們得到~0040。由于磁區號~3~是奇數, 有餘數, 則應取高~12~位作為~FAT12~表項內容, 將~0040~右移~4~位再算術與~0x0fff, 我們得到~0x0004, 即為對應的~FAT12~表項, 說明磁區號~3~的後繼磁區號是~4~。
+
+然後, 我們就可以將~loader.bin~整個檔案加載到記憶體中去了, 見圖~\ref{CHsmall_load}。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=140, lastline=168]{../src/chapter2/2/boot.S}
+\codecaption{加載~loader.bin~的代碼(節自 chapter2/2/boot.S)}\label{CHsmall_load}
+
+在圖~\ref{CHsmall_load}~中我們看到一個宏~DeltaSectorNo~, 這個宏就是為了將~FAT~中的簇號轉換為磁區號。由于根目錄區的開始磁區號是~19~, 而~FAT~表的前兩個項~0,1~分別是磁盤識別字和被保留, 其表項其實是從第~2~項開始的, 第~2~項對應著根目錄區後的第一個磁區, 所以磁區號和簇號的對應關系就是：
+
+\begin{align*}
+\mbox{磁區號}~&=~\mbox{簇號~+~根目錄區佔用磁區數~+~根目錄區開始磁區號~-~2}\\
+ &=~\mbox{簇號~+~根目錄區佔用磁區數~+~17}
+\end{align*}
+
+這就是~DeltaSectorNo~的值~17~的由來。
+
+\subsection{向~loader~轉交控制權}
+
+我們已經將~loader~成功地加載入了記憶體, 然後就需要進行一個跳轉, 來執行~loader~。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=168, lastline=174]{../src/chapter2/2/boot.S}
+\codecaption{跳轉到~loader~執行(節自 chapter2/2/boot.S)}\label{CHsmall_jump}
+
+\subsection{生成鏡像並測試} \label{CHsmall_test}
+
+我們寫好了匯編源代碼, 那麼就需要將源代碼編譯成可執行檔案, 並生成軟碟片鏡像了。
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11, lastline=42]{../src/chapter2/2/Makefile}
+\codecaption{用~Makefile~編譯(節自 chapter2/2/Makefile)}\label{CHsmall_compile}
+
+上面的代碼比較簡單, 我們可以通過一個~make~命令編譯生成~boot.img~和~LOADER.BIN~：
+
+\begin{Command}
+$ make
+gcc -c boot.S
+ld boot.o -o boot.elf -Tsolrex_x86_boot.ld
+objcopy -R .pdr -R .comment -R.note -S -O binary boot.elf boot.bin
+1+0 records in
+1+0 records out
+512 bytes (512 B) copied, 3.5761e-05 s, 14.3 MB/s
+2879+0 records in
+2879+0 records out
+1474048 bytes (1.5 MB) copied, 0.0132009 s, 112 MB/s
+gcc -c loader.S
+ld loader.o -o loader.elf -Tsolrex_x86_dos.ld
+objcopy -R .pdr -R .comment -R.note -S -O binary loader.elf LOADER.BIN
+#################################################################
+# Compiling work finished, now you can use "sudo make copy" to
+# copy LOADER.BIN into boot.img
+#################################################################
+\end{Command}
+
+由于我們的目標就是讓啟動磁區加載引導檔案, 所以需要把引導檔案放入軟碟片鏡像中。那麼如何將~LOADER.BIN~放入~boot.img~中呢？我們只需要掛載~boot.img~並將~LOADER.BIN~拷貝進入被掛載的目錄, 為此我們在~Makefile~中添加新的編譯目標~copy~：
+
+\VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=42, lastline=51]{../src/chapter2/2/Makefile}
+\codecaption{拷貝~LOADER.BIN~入~boot.img(節自 chapter2/2/Makefile)}\label{CHsmall_copy}
+
+由于掛載軟碟片鏡像在很多~Linux~系統上需要~root~權限, 所以我們沒有將~copy~目標添加到~all~的依賴關系中。在執行~make copy~命令之前我們必須先獲得~root~權限。
+
+\begin{Command}
+$ su
+Password: 
+# make copy
+mkdir -p /tmp/floppy;\
+        mount -o loop boot.img /tmp/floppy/ -o fat=12;\
+        cp LOADER.BIN /tmp/floppy/;\
+        umount /tmp/floppy/;\
+        rm -rf /tmp/floppy/;
+\end{Command}
+
+如果僅僅生成~boot.img~而不將~loader.bin~裝入它, 用這樣的軟碟片啟動會顯示找不到~LOADER：\\
+\FIGFIX{沒有裝入~LOADER.BIN~的軟碟片啟動}{vb_run_3}{0.75\textwidth}
+
+裝入~loader.bin~之後再用~boot.img~啟動, 我們看到虛擬機啟動並在屏幕中間打印出了一個字符「L」, 這說明我們前面的工作都是正確的。\\
+\FIGFIX{裝入了~LOADER.BIN~以後再啟動}{vb_run_4}{0.75\textwidth}
