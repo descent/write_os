@@ -35,6 +35,7 @@ LABEL_DESC_CODE16:  Descriptor    0,         0xffff, DA_C      # 非一致程式
 LABEL_DESC_DATA:   Descriptor    0,      DataLen-1, DA_DRW    # Data
 LABEL_DESC_STACK:  Descriptor    0,     TopOfStack, DA_DRWA+DA_32 # Stack, 32 位
 LABEL_DESC_TEST: Descriptor 0x500000, 0xffff, DA_DRW
+LABEL_DESC_LDT: Descriptor 0, LDT_LEN-1, DA_LDT
 LABEL_DESC_VIDEO:   Descriptor  0xB8000, 0xffff, DA_DRW
 
 .set GdtLen, (. - LABEL_GDT)  /* GDT Length */
@@ -49,7 +50,17 @@ GdtPtr: .2byte  (GdtLen - 1)  /* GDT Limit */
 .set SelectorData, (LABEL_DESC_DATA         - LABEL_GDT)
 .set SelectorStack, (LABEL_DESC_STACK        - LABEL_GDT)
 .set SelectorTest, (LABEL_DESC_TEST         - LABEL_GDT)
+.set SelectorLDT, (LABEL_DESC_LDT         - LABEL_GDT)
 .set    SelectorVideo,  (LABEL_DESC_VIDEO  - LABEL_GDT)
+
+# LDT
+
+LABEL_LDT:
+LABEL_LDT_DESC_CODEA: Descriptor 0, (CodeALen - 1), (DA_C + DA_32) # Code, 32 位
+.set LDT_LEN, (. - LABEL_LDT)  /* LDT Length */
+
+/* LDT Selector (TI flag set)*/
+.set    SelectorLDTCodeA, (LABEL_LDT_DESC_CODEA - LABEL_LDT + SA_TIL)
 
 
 /* Program starts here. */
@@ -103,6 +114,27 @@ LABEL_BEGIN:
 	shr	$16, %eax
 	movb	%al, (LABEL_DESC_STACK + 4)
 	movb	%ah, (LABEL_DESC_STACK + 7)
+
+    /* Initialize LDT descriptor in GDT. */
+	xor	%eax, %eax
+	mov	%ds, %ax
+	shl	$4, %eax
+	addl	$(LABEL_LDT), %eax
+	movw	%ax, (LABEL_DESC_LDT + 2)
+	shr	$16, %eax
+	movb	%al, (LABEL_DESC_LDT + 4)
+	movb	%ah, (LABEL_DESC_LDT + 7)
+
+   /* Initialize code A descriptor in LDT. */
+	xor	%eax, %eax
+	mov	%ds, %ax
+	shl	$4, %eax
+	addl	$(LABEL_CODE_A), %eax
+	movw	%ax, (LABEL_LDT_DESC_CODEA + 2)
+	shr	$16, %eax
+	movb	%al, (LABEL_LDT_DESC_CODEA + 4)
+	movb	%ah, (LABEL_LDT_DESC_CODEA + 7)
+
 
     /* Prepared for loading GDTR */
     xor     %eax, %eax
@@ -211,6 +243,11 @@ LABEL_SEG_CODE32:
         movw $0x1234, %ax
 	call	DispAX
 
+  
+  mov $(SelectorLDT), %ax
+  lldt %ax
+  ljmp $(SelectorLDTCodeA), $0
+
 
 /*
 	movl	$0, (video_addr_offset)
@@ -243,8 +280,39 @@ LABEL_SEG_CODE32:
 	call	TestRead
 */
 
-    ljmpl     $SelectorCode16,$0
+   # ljmpl     $SelectorCode16,$0
     # jmpl     $SelectorCode16,$0 # it works
+
+LABEL_CODE_A:
+#if 0
+# intel syntax
+        mov     ax, SelectorVideo
+        mov     gs, ax                  ; 視頻段選擇子(目的)
+
+        mov     edi, (80 * 12 + 0) * 2  ; 螢幕第 10 行, 第 0 列。
+        mov     ah, 0Ch                 ; 0000: 黑底    1100: 紅字
+        mov     al, 'L'
+        mov     [gs:edi], ax
+#else
+# at&t syntax
+ #if 1
+  mov $(SelectorVideo), %ax
+  mov %ax, %gs
+  mov $((80 * 12 + 0) * 2), %edi
+  mov $0x0c, %ah
+  mov $'L', %al
+  mov %ax, %gs:(%edi)
+  #else
+  /* can call DispAL function */
+  movb $0xef, %al
+  call DispAL
+  #endif
+  /* jump to real mode code16 and return to dos. */
+  ljmpl     $SelectorCode16,$0
+
+#endif
+.set CodeALen, (. - LABEL_CODE_A)  
+
 
 # ------------------------------------------------------------------------
 TestRead:
@@ -483,5 +551,4 @@ LABEL_GO_BACK_TO_REAL:
 
 
 .set Code16Len, . - LABEL_SEG_CODE16
-
 
