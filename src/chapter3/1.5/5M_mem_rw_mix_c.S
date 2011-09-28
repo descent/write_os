@@ -197,7 +197,11 @@ LABEL_SEG_CODE32:
 #push  %eax                       # Multiboot magic number
 #   push  %ebx                       # Multiboot data structure
 
+        movb $0xef, %al
 	call	kmain
+        movb $0xa9, %al
+	call	DispAL
+/*
 	call	DispReturn
         #movb $0xa9, %al
 	#call	DispAL
@@ -205,7 +209,7 @@ LABEL_SEG_CODE32:
 	call	TestRead
 	call	TestWrite
 	call	TestRead
-
+*/
 
     ljmpl     $SelectorCode16,$0
     # jmpl     $SelectorCode16,$0 # it works
@@ -262,6 +266,7 @@ TestWrite:
 # 被改變的暫存器:
 #	ax, edi
 # ------------------------------------------------------------------------
+.globl DispAL
 DispAL:
 	pushl	%ecx
 	pushl	%edx
@@ -333,7 +338,7 @@ kmain:
 #ALIGN   32
 #[BITS   32]
 LABEL_DATA:
-SPValueInRealMode: .2byte, 0x0
+SPValueInRealMode: .2byte 0x0
 # string
 PMMessage:              .ascii      "In Protect Mode now. ^-^\0"   # 在保護模式中顯示
 .set    OffsetPMMessage, (PMMessage - LABEL_DATA)
