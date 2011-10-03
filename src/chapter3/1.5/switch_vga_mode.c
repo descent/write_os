@@ -136,9 +136,11 @@ int init_graph_vga(int width, int height,int chain4)
    byte val;
    int a;
 
+#if 1
    width=320;
    height=200;
    chain4=1;
+#endif
 
    switch(width) {
       case 256: w=width_256; val=R_COM+R_W256; break;
@@ -265,3 +267,16 @@ int main(int argc, char **argv)
   init_graph_vga(320,200,1);
 }
 #endif
+int vga_test()
+{
+  int i=0;
+  void write_mem8(int addr, u8 data);
+
+  init_graph_vga(300, 200, 1);
+  for (i=0xa0000; i <= 0xaffff; ++i)
+  {
+    write_mem8(i, 15);
+  }
+
+
+}

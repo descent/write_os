@@ -33,6 +33,7 @@ LABEL_DESC_DATA:   Descriptor    0,      DataLen-1, DA_DRW    # Data
 LABEL_DESC_STACK:  Descriptor    0,     TopOfStack, DA_DRWA+DA_32 # Stack, 32 位
 LABEL_DESC_TEST: Descriptor 0x500000, 0xffff, DA_DRW
 LABEL_DESC_VIDEO:   Descriptor  0xB8000, 0xffff, DA_DRW
+LABEL_DESC_TEST_DATA:   Descriptor    0,      0xffff, DA_DRW    # Data
 
 .set GdtLen, (. - LABEL_GDT)  /* GDT Length */
 
@@ -47,6 +48,7 @@ GdtPtr: .2byte  (GdtLen - 1)  /* GDT Limit */
 .set SelectorStack, (LABEL_DESC_STACK        - LABEL_GDT)
 .set SelectorTest, (LABEL_DESC_TEST         - LABEL_GDT)
 .set    SelectorVideo,  (LABEL_DESC_VIDEO  - LABEL_GDT)
+.set SELECT_TEST_DATA, (LABEL_DESC_TEST_DATA - LABEL_GDT)
 
 
 /* Program starts here. */
@@ -142,6 +144,19 @@ LABEL_REAL_ENTRY:               # 從保護模式跳回到實模式就到了這�
 
         sti                     # 開中斷
 
+
+
+        # read a key from keyboard, bios call
+        movb $0x0, %ah
+        int $0x16
+
+#if 1
+        # switch to text mode
+        movb $0x3, %al
+        movb $0x0, %ah
+        int $0x10     
+#endif
+
         mov     $0x4c00, %ax
         int     $0x21             #  回到 DOS
 # END of .code16
@@ -159,6 +174,9 @@ LABEL_SEG_CODE32:
 
     mov     $(SelectorVideo), %ax
     mov     %ax, %gs                /* Video segment selector(dest) */
+
+    mov     $(SELECT_TEST_DATA), %ax
+    mov     %ax, %es                /* Video segment selector(dest) */
 
 	mov	$(SelectorStack), %ax
 	mov	%ax, %ss			# 堆疊段選擇子
@@ -197,9 +215,10 @@ LABEL_SEG_CODE32:
 #push  %eax                       # Multiboot magic number
 #   push  %ebx                       # Multiboot data structure
 
-        movb $0xef, %al
-	call	kmain
-	#call	init_graph_vga
+#        movb $0xef, %al
+#	call	kmain
+#	call	init_graph_vga
+	call	vga_test
         movb $0xa9, %al
 	call	DispAL
 /*
@@ -258,6 +277,13 @@ TestWrite:
 	ret
 # TestWrite 結束----------------------------------------------------------
 
+# ref 30 天打造OS, page 80
+.globl write_mem8
+write_mem8:
+  mov 4(%esp), %ecx;
+  movb 8(%esp), %al;
+  mov %al, %es:(%ecx)
+  ret
 
 # ------------------------------------------------------------------------
 # 顯示 AL 中的數字
