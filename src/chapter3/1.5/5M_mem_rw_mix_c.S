@@ -199,6 +199,7 @@ LABEL_SEG_CODE32:
 
         movb $0xef, %al
 	call	kmain
+	call	init_graph_vga
         movb $0xa9, %al
 	call	DispAL
 /*

@@ -21,6 +21,11 @@ LDFILE_DOS=solrex_x86_dos.ld
 LDFLAGS_BOOT=-T$(LDFILE_BOOT)
 LDFLAGS_DOS=-T$(LDFILE_DOS)
 
+switch_vga_mode.com: switch_vga_mode.o
+	$(LD) -o switch_vga_mode.elf $(LDFLAGS_DOS) $^
+	$(OBJCOPY) $(TRIM_FLAGS) switch_vga_mode.elf $@
+switch_vga_mode.o: switch_vga_mode.c
+	gcc -nostdlib -nostartfiles -nodefaultlibs -c $<
 ldt.com: ldt.o 
 	$(LD) -o ldt.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) ldt.elf $@
@@ -35,7 +40,7 @@ ldt.o: ldt.S
 5M_mem_rw.o: 5M_mem_rw.S
 	$(CC) $(CFLAGS) $<
 
-5M_mem_rw_mix_c.com: 5M_mem_rw_mix_c.o k.o
+5M_mem_rw_mix_c.com: 5M_mem_rw_mix_c.o k.o switch_vga_mode.o
 	$(LD) -o 5M_mem_rw.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw.elf $@
 
