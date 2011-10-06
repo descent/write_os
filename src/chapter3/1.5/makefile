@@ -24,13 +24,13 @@ LDFLAGS_DOS=-T$(LDFILE_DOS)
 5M_mem_rw_mix_c_vga.com: 5M_mem_rw_mix_c_vga.o switch_vga_mode.o
 	$(LD) -o 5M_mem_rw_mix_c_vga.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw_mix_c_vga.elf $@
-5M_mem_rw_mix_c_vga.o: 5M_mem_rw_mix_c_vga.S
+5M_mem_rw_mix_c_vga.o: 5M_mem_rw_mix_c_vga.S config.h
 	$(CC) $(CFLAGS) $<
 
 switch_vga_mode.com: switch_vga_mode.o
 	$(LD) -o switch_vga_mode.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) switch_vga_mode.elf $@
-switch_vga_mode.o: switch_vga_mode.c
+switch_vga_mode.o: switch_vga_mode.c config.h
 	gcc -nostdlib -nostartfiles -nodefaultlibs -c $<
 ldt.com: ldt.o 
 	$(LD) -o ldt.elf $(LDFLAGS_DOS) $^

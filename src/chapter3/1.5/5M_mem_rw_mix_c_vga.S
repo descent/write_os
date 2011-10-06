@@ -14,6 +14,7 @@
    version 3 of the License, or (at your option) any later version. */
 
 #include "pm.h"
+#include "config.h"
 
 .code16
 .text
@@ -114,6 +115,11 @@ LABEL_BEGIN:
 
     /* Clear Interrupt Flags */
     cli
+#ifdef VGA_BIOS
+        # switch to graphic mode
+        movw $0x13, %ax
+        int $0x10     
+#endif
 
     /* Open A20 line. */
     inb     $0x92, %al
@@ -124,6 +130,7 @@ LABEL_BEGIN:
     movl    %cr0, %eax
     orl     $1, %eax
     movl    %eax, %cr0
+
 
     /* Mixed-Size Jump. */
     ljmp $SelectorCode32, $0       /* Thanks to earthengine@gmail, I got */

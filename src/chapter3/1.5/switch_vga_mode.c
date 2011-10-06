@@ -7,6 +7,8 @@
 #define VGA_TEXT
 #define TEXT_TEST
 
+#include "config.h"
+
 typedef char byte;
 typedef unsigned char u8;
 typedef unsigned short int u16;
@@ -146,6 +148,9 @@ int init_graph_vga(u16 width, u16 height, u8 chain4)
    byte val;
    int a;
 
+#ifdef VGA_BIOS
+  return 1;
+#endif
 #if 0
    width=320;
    height=200;
@@ -242,12 +247,50 @@ int init_graph_vga(u16 width, u16 height, u8 chain4)
 
 
 // ref: 30 天打造 OS, projects/04_day sample code
+
+
+void set_palette16(int start, int end, unsigned char *rgb)
+{
+	int i, eflags;
+	//eflags = io_load_eflags();	/* èÝÂtOÌlðL^·é */
+	//io_cli(); 					/* ÂtOð0ÉµÄèÝÖ~É·é */
+	io_out8(0x03c8, start);
+	for (i = start; i <= end; i++) {
+		io_out8(0x03c9, rgb[0] / 4);
+		io_out8(0x03c9, rgb[1] / 4);
+		io_out8(0x03c9, rgb[2] / 4);
+		rgb += 3;
+	}
+	//io_store_eflags(eflags);	/* èÝÂtOð³Éß· */
+	return;
+}
+
+void set_palette(u8 index, u8 r, u8 g, u8 b)
+{
+  io_out8(0x03c8, index);
+  //io_out8(0x03c8, 0);
+
+#if 0
+  io_out8(0x03c9, rgb[0] / 4);
+  io_out8(0x03c9, rgb[1] / 4);
+  io_out8(0x03c9, rgb[2] / 4);
+#else
+/*
+  io_out8(0x03c9, 0xff / 4);
+  io_out8(0x03c9, 0xff / 4);
+  io_out8(0x03c9, 0xff / 4);
+  */
+#endif
+  io_out8(0x03c9, r / 4);
+  io_out8(0x03c9, g / 4);
+  io_out8(0x03c9, b / 4);
+}
+
 void init_palette(void)
 {
-  void set_palette(int start, int end, unsigned char *rgb);
-
-	static unsigned char table_rgb[16 * 3] = {
-		0x00, 0x00, 0x00,	/*  0: */
+  int i=0;
+	u8 table_rgb[16 * 3] = {
+		0x00, 0x00, 0x00,	//  0:black
 		0xff, 0x00, 0x00,	/*  1:¾é¢Ô */
 		0x00, 0xff, 0x00,	/*  2:¾é¢Î */
 		0xff, 0xff, 0x00,	/*  3:¾é¢©F */
@@ -264,27 +307,40 @@ void init_palette(void)
 		0x00, 0x84, 0x84,	/* 14:Ã¢F */
 		0x84, 0x84, 0x84	/* 15:Ã¢DF */
 	};
-	set_palette(0, 15, table_rgb);
-	return;
+  u8 *p=table_rgb;
 
-	/* static char ½ßÍAf[^Éµ©g¦È¢¯ÇDB½ß */
+    //set_palette(0, p[0], p[0], p[0]);
+    #if 0
+  for (i=0; i < 2 ; ++i)
+  {
+    set_palette(i, *p, *(p+1), *(p+2));
+    p+=3;
+  }
+  #endif
+
+  set_palette(0, 0x00, 0x00, 0x00);
+  set_palette(1, 0xff, 0x00, 0x00);
+  set_palette(2, 0x00, 0xff, 0x00);
+  set_palette(3, 0xff, 0xff, 0x00);
+  set_palette(4, 0x00, 0x00, 0xff);
+  set_palette(5, 0xff, 0x00, 0xff);
+  set_palette(6, 0x00, 0xff, 0xff);
+  #if 0
+  set_palette(7, 0xff, 0xff, 0xff);
+  set_palette(8, 0xc6, 0xc6, 0xc6);
+  set_palette(9, 0x84, 0x00, 0x00);
+  set_palette(10, 0x00, 0x84, 0x00);
+  set_palette(11, 0x84, 0x84, 0x00);
+  set_palette(12, 0x00, 0x00, 0x84);
+  set_palette(13, 0x84, 0x00, 0x84);
+  set_palette(14, 0x00, 0x84, 0x84);
+  set_palette(15, 0x84, 0x84, 0x84);
+  #endif
+
+  	/* static char ½ßÍAf[^Éµ©g¦È¢¯ÇDB½ß */
 }
 
-void set_palette(int start, int end, unsigned char *rgb)
-{
-	int i, eflags;
-	//eflags = io_load_eflags();	/* èÝÂtOÌlðL^·é */
-	//io_cli(); 					/* ÂtOð0ÉµÄèÝÖ~É·é */
-	io_out8(0x03c8, start);
-	for (i = start; i <= end; i++) {
-		io_out8(0x03c9, rgb[0] / 4);
-		io_out8(0x03c9, rgb[1] / 4);
-		io_out8(0x03c9, rgb[2] / 4);
-		rgb += 3;
-	}
-	//io_store_eflags(eflags);	/* èÝÂtOð³Éß· */
-	return;
-}
+
 
 void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1)
 {
@@ -293,7 +349,7 @@ void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, i
 	for (y = y0; y <= y1; y++) {
 		for (x = x0; x <= x1; x++)
 			//vram[y * xsize + x] = c;
-                        write_mem8(0xa0000 + (y * xsize + x), 15);
+                        write_mem8(0xa0000 + (y * xsize + x), c);
 	}
 	return;
 }
@@ -414,6 +470,19 @@ void put_char(u16 x, u16 y, u8 c, u8 attr)
 }
 #endif
 
+// char fg attribute 
+#define HRED 0xc
+#define HGREEN 0xa
+#define HBLUE 0x9
+#define HWHITE 0xf
+
+#define RED 4
+#define GREEN 2
+#define BLUE 1
+#define WHITE 7
+
+// char bg attribute 
+
 int text_test()
 {
   //int i=0;
@@ -443,12 +512,46 @@ int text_test()
     put_char(6, 2, 'M', 0x7); 
   else
   {
+  #if 1
     int i=0;
+    u32 *vram = (u32*) 0xa0000;
 
+    //init_palette();
+
+    #if 1
+      set_palette(0, 0x0, 0x0, 0x0);
+      set_palette(1, 0xff, 0x0, 0x0);
+      set_palette(2, 0x00, 0xff, 0x0);
+      #endif
+
+      //boxfill8(vram, 320, 2, 0, 0, 20, 20);
+      {
+        int x=0,y=0;
+
+	//for (y = 0; y <= 50; y++) 
+	#if 0
+		for (x = 0; x <= 50; x++)
+                        write_mem8(0xa0000 + (y * 320 + x), 2);
+#endif
+           write_mem8(0xa0000 + (0 + 0), 2);
+           write_mem8(0xa0000 + (2*320 + 0), 2);
+           write_mem8(0xa0000 + (4 * 320 + 0), 2);
+	
+
+}
+      #if 0
     for (i=0xa0000; i <= 0xaffff; ++i)
     {
-      write_mem8(i, 15);
+      //unsigned char color[] = {0xff, 0xff, 0xff};
+      unsigned char color[] = {0xff, 0x0, 0x0};
+      //set_palette(5, 0xff, 0, 0);
+      //set_palette(0, 0xff, 0xff, 0xff);
+      //write_mem8(i, 15);
+      write_mem8(i, 1);
+      //write_mem8(i, 2);
     }
+    #endif
+    #endif
   }
 }
 
