@@ -4,12 +4,20 @@
 // vga mode switcher by Jonas Berlin -98 <jberlin@cc.hut.fi>
 //
 
+#define VGA_TEXT
+#define TEXT_TEST
 
 typedef char byte;
 typedef unsigned char u8;
 typedef unsigned short int u16;
+typedef unsigned int u32;
 typedef unsigned short word;
 typedef unsigned long dword;
+
+void write_mem8(u32 addr, u8 data); // assembly function.
+
+
+#ifdef VGA_TEXT
 
 u8 io_in8(u16 port)
 {
@@ -129,19 +137,22 @@ static const byte height_600[] = { 0x70, 0xf0, 0x60, 0x5b, 0x8c,
 // you'll need to switch planes to access the whole screen but
 // that allows you using any resolution, up to 400x600
 
-int init_graph_vga(int width, int height,int chain4) 
-  // returns 1=ok, 0=fail
+// returns 1=ok, 0=fail
+int init_graph_vga(u16 width, u16 height, u8 chain4) 
 {
+  void put_char(u16 x, u16 y, u8 c, u8 attr);
+
    const byte *w,*h;
    byte val;
    int a;
 
-#if 1
+#if 0
    width=320;
    height=200;
    chain4=1;
 #endif
 
+      put_char(7, 5, 'I', 0x7); 
    switch(width) {
       case 256: w=width_256; val=R_COM+R_W256; break;
       case 320: w=width_320; val=R_COM+R_W320; break;
@@ -150,6 +161,7 @@ int init_graph_vga(int width, int height,int chain4)
       case 400: w=width_400; val=R_COM+R_W400; break;
       default: return 0; // fail
    }
+      put_char(7, 2, 'K', 0x7); 
    switch(height) {
       case 200: h=height_200; val|=R_H200; break;
       case 224: h=height_224; val|=R_H224; break;
@@ -164,6 +176,7 @@ int init_graph_vga(int width, int height,int chain4)
       case 600: h=height_600; val|=R_H600; break;
       default: return 0; // fail
    }
+      put_char(8, 2, 'U', 0x7); 
 
    // chain4 not available if mode takes over 64k
 
@@ -209,6 +222,23 @@ int init_graph_vga(int width, int height,int chain4)
 
    return 1;
 }
+
+#define COL8_000000		0
+#define COL8_FF0000		1
+#define COL8_00FF00		2
+#define COL8_FFFF00		3
+#define COL8_0000FF		4
+#define COL8_FF00FF		5
+#define COL8_00FFFF		6
+#define COL8_FFFFFF		7
+#define COL8_C6C6C6		8
+#define COL8_840000		9
+#define COL8_008400		10
+#define COL8_848400		11
+#define COL8_000084		12
+#define COL8_840084		13
+#define COL8_008484		14
+#define COL8_848484		15
 
 
 // ref: 30 天打造 OS, projects/04_day sample code
@@ -256,6 +286,52 @@ void set_palette(int start, int end, unsigned char *rgb)
 	return;
 }
 
+void boxfill8(unsigned char *vram, int xsize, unsigned char c, int x0, int y0, int x1, int y1)
+{
+
+	int x, y;
+	for (y = y0; y <= y1; y++) {
+		for (x = x0; x <= x1; x++)
+			//vram[y * xsize + x] = c;
+                        write_mem8(0xa0000 + (y * xsize + x), 15);
+	}
+	return;
+}
+
+void HariMain(void)
+{
+	char *vram;
+	int xsize, ysize;
+
+	init_palette();
+	vram = (char *) 0xa0000;
+	xsize = 320;
+	ysize = 200;
+
+	boxfill8(vram, xsize, COL8_008484,  0,         0,          xsize -  1, ysize - 29);
+	boxfill8(vram, xsize, COL8_C6C6C6,  0,         ysize - 28, xsize -  1, ysize - 28);
+	boxfill8(vram, xsize, COL8_FFFFFF,  0,         ysize - 27, xsize -  1, ysize - 27);
+	boxfill8(vram, xsize, COL8_C6C6C6,  0,         ysize - 26, xsize -  1, ysize -  1);
+
+	boxfill8(vram, xsize, COL8_FFFFFF,  3,         ysize - 24, 59,         ysize - 24);
+	boxfill8(vram, xsize, COL8_FFFFFF,  2,         ysize - 24,  2,         ysize -  4);
+	boxfill8(vram, xsize, COL8_848484,  3,         ysize -  4, 59,         ysize -  4);
+	boxfill8(vram, xsize, COL8_848484, 59,         ysize - 23, 59,         ysize -  5);
+	boxfill8(vram, xsize, COL8_000000,  2,         ysize -  3, 59,         ysize -  3);
+	boxfill8(vram, xsize, COL8_000000, 60,         ysize - 24, 60,         ysize -  3);
+
+	boxfill8(vram, xsize, COL8_848484, xsize - 47, ysize - 24, xsize -  4, ysize - 24);
+	boxfill8(vram, xsize, COL8_848484, xsize - 47, ysize - 23, xsize - 47, ysize -  4);
+	boxfill8(vram, xsize, COL8_FFFFFF, xsize - 47, ysize -  3, xsize -  4, ysize -  3);
+	boxfill8(vram, xsize, COL8_FFFFFF, xsize -  3, ysize - 24, xsize -  3, ysize -  3);
+
+#if 0
+	for (;;) {
+		io_hlt();
+	}
+#endif
+}
+
 
 /*
  *  Hope you get what you want. To put on normal mode 13h, use
@@ -267,16 +343,113 @@ int main(int argc, char **argv)
   init_graph_vga(320,200,1);
 }
 #endif
+
 int vga_test()
 {
+
+#if 0
+  HariMain();
+#else
   int i=0;
-  void write_mem8(int addr, u8 data);
 
   init_graph_vga(300, 200, 1);
   for (i=0xa0000; i <= 0xaffff; ++i)
   {
     write_mem8(i, 15);
   }
-
+#endif
 
 }
+#endif
+
+#ifdef TEXT_TEST
+
+#if 0
+// x : from 1
+// y : from 1
+void put_char(int x, int y, u8 c, u8 attr)
+{
+  u32 offset = 0xb8000 + (80 * (x-1) * 2 + (y - 1) * 2);
+
+  //write_mem8(0xb8000+4, 'Z');
+  //write_mem8(0xb8000+5, 0xc);
+  //x=1;
+  //y=2;
+  //c='b';
+  //attr=0xc;
+  //write_mem8(0xb8000+4, c);
+  //offset=2;
+  write_mem8(0xb8000+offset, c);
+  write_mem8(0xb8000+offset+1, attr);
+}
+
+#else
+
+#if 0
+// ok
+void put_char(u16 offset, u8 c)
+{
+  write_mem8(0xb8000 + offset, c);
+}
+
+void put_char(u16 offset, u8 c, u8 attr)
+{
+  write_mem8(0xb8000 + offset, c);
+  write_mem8(0xb8000 + offset+1, attr);
+}
+#endif
+
+void goto_xy(u16 x, u16 y)
+{
+}
+
+// x : from 0
+// y : from 0
+void put_char(u16 x, u16 y, u8 c, u8 attr)
+{
+  u32 offset = 0xb8000 + (80 * x * 2 + y * 2);
+  //u32 offset = x;
+  write_mem8(offset, c);
+  write_mem8(offset+1, attr);
+}
+#endif
+
+int text_test()
+{
+  //int i=0;
+
+  //for (i=0; i < 2; i+=2)
+  //{
+    //write_mem8(0xb8000, 'A');
+    //write_mem8(0xa0000, 'A');
+    //write_mem8(0xb8001, 0x0c);
+  //}
+  //put_char(1, 2, 'B', 0x0c);
+  //put_char(78, 3, 'Z', 0x0c);
+  //put_char(320, 'X');
+  //put_char(320, 'X', 0xc); // red
+  //put_char(320, 'X', 0xa); // green
+  //put_char(320+2, 'A', 0x9); // blue
+  //put_char(320, 'X', 0x1); // blue
+
+  //put_char(320, 2, 'X', 0xc); // blue
+  put_char(0, 3, 'X', 0xc); // blue
+  put_char(1, 2, 'Y', 0x9); // blue
+  put_char(2, 2, 'Z', 0x8); 
+  put_char(4, 2, 'Z', 0xf); 
+  put_char(5, 2, 'Z', 0x7); 
+
+  if (init_graph_vga(320, 200, 1)==0)
+    put_char(6, 2, 'M', 0x7); 
+  else
+  {
+    int i=0;
+
+    for (i=0xa0000; i <= 0xaffff; ++i)
+    {
+      write_mem8(i, 15);
+    }
+  }
+}
+
+#endif

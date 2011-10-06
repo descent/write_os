@@ -33,7 +33,7 @@ LABEL_DESC_DATA:   Descriptor    0,      DataLen-1, DA_DRW    # Data
 LABEL_DESC_STACK:  Descriptor    0,     TopOfStack, DA_DRWA+DA_32 # Stack, 32 位
 LABEL_DESC_TEST: Descriptor 0x500000, 0xffff, DA_DRW
 LABEL_DESC_VIDEO:   Descriptor  0xB8000, 0xffff, DA_DRW
-LABEL_DESC_TEST_DATA:   Descriptor    0,      0xffff, DA_DRW    # Data
+LABEL_DESC_TEST_DATA:   Descriptor    0,      0xfffff, DA_DRW    # Data
 
 .set GdtLen, (. - LABEL_GDT)  /* GDT Length */
 
@@ -218,9 +218,13 @@ LABEL_SEG_CODE32:
 #        movb $0xef, %al
 #	call	kmain
 #	call	init_graph_vga
-	call	vga_test
-        movb $0xa9, %al
-	call	DispAL
+        pushl   %ebp
+        movl    %esp, %ebp
+
+	call	text_test
+	#call	vga_test
+        #movb $0xa9, %al
+	#call	DispAL
 /*
 	call	DispReturn
         #movb $0xa9, %al
@@ -282,7 +286,7 @@ TestWrite:
 write_mem8:
   mov 4(%esp), %ecx;
   movb 8(%esp), %al;
-  mov %al, %es:(%ecx)
+  movb %al, %es:(%ecx)
   ret
 
 # ------------------------------------------------------------------------
@@ -327,6 +331,8 @@ DispAL:
 
 	ret
 # DispAL 結束-------------------------------------------------------------
+
+
 
 
 # ------------------------------------------------------------------------
