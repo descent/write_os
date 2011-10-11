@@ -50,6 +50,7 @@ void outb( unsigned short port, unsigned char val )
 		      }
 #endif
 
+static inline
 void io_out8(u16 port, u8 data)
 {
 //    outb    %al, $0x92
@@ -59,6 +60,7 @@ void io_out8(u16 port, u8 data)
                : : "a"(data), "Nd"(port) );
 }
 
+static inline
 void io_out16(u16 port, u16 data)
 {
   asm volatile("outw %0, %1"
@@ -142,7 +144,6 @@ static const byte height_600[] = { 0x70, 0xf0, 0x60, 0x5b, 0x8c,
 // returns 1=ok, 0=fail
 int init_graph_vga(u16 width, u16 height, u8 chain4) 
 {
-  void put_char(u16 x, u16 y, u8 c, u8 attr);
 
    const byte *w,*h;
    byte val;
@@ -157,7 +158,6 @@ int init_graph_vga(u16 width, u16 height, u8 chain4)
    chain4=1;
 #endif
 
-      put_char(7, 5, 'I', 0x7); 
    switch(width) {
       case 256: w=width_256; val=R_COM+R_W256; break;
       case 320: w=width_320; val=R_COM+R_W320; break;
@@ -166,7 +166,6 @@ int init_graph_vga(u16 width, u16 height, u8 chain4)
       case 400: w=width_400; val=R_COM+R_W400; break;
       default: return 0; // fail
    }
-      put_char(7, 2, 'K', 0x7); 
    switch(height) {
       case 200: h=height_200; val|=R_H200; break;
       case 224: h=height_224; val|=R_H224; break;
@@ -181,7 +180,6 @@ int init_graph_vga(u16 width, u16 height, u8 chain4)
       case 600: h=height_600; val|=R_H600; break;
       default: return 0; // fail
    }
-      put_char(8, 2, 'U', 0x7); 
 
    // chain4 not available if mode takes over 64k
 
@@ -189,8 +187,8 @@ int init_graph_vga(u16 width, u16 height, u8 chain4)
 
    // here goes the actual modeswitch
 
-   io_out8(0x3c2,val);
-   io_out16(0x3d4,0x0e11); // enable regs 0-7
+   io_out8(0x3c2,val);  // miscellaneous output register
+   io_out16(0x3d4,0x0e11); // enable regs 0-7, crt controller registers
 
    for(a=0;a<SZ(hor_regs);++a) 
       io_out16(0x3d4,(word)((w[a]<<8)+hor_regs[a]));
@@ -512,13 +510,13 @@ int text_test()
     put_char(6, 2, 'M', 0x7); 
   else
   {
-  #if 1
-    int i=0;
-    u32 *vram = (u32*) 0xa0000;
+#if 1
+
+  #if 0
 
     //init_palette();
 
-    #if 1
+    #if 0
       set_palette(0, 0x0, 0x0, 0x0);
       set_palette(1, 0xff, 0x0, 0x0);
       set_palette(2, 0x00, 0xff, 0x0);
@@ -538,8 +536,12 @@ int text_test()
            write_mem8(0xa0000 + (4 * 320 + 0), 2);
 	
 
-}
-      #if 0
+      }
+      #else
+{
+    int i=0;
+    u32 *vram = (u32*) 0xa0000;
+
     for (i=0xa0000; i <= 0xaffff; ++i)
     {
       //unsigned char color[] = {0xff, 0xff, 0xff};
@@ -547,9 +549,10 @@ int text_test()
       //set_palette(5, 0xff, 0, 0);
       //set_palette(0, 0xff, 0xff, 0xff);
       //write_mem8(i, 15);
-      write_mem8(i, 1);
+      write_mem8(i, 15);
       //write_mem8(i, 2);
     }
+}
     #endif
     #endif
   }

@@ -21,7 +21,7 @@ LDFILE_DOS=solrex_x86_dos.ld
 LDFLAGS_BOOT=-T$(LDFILE_BOOT)
 LDFLAGS_DOS=-T$(LDFILE_DOS)
 
-5M_mem_rw_mix_c_vga.com: 5M_mem_rw_mix_c_vga.o switch_vga_mode.o
+5mcvga.com: 5M_mem_rw_mix_c_vga.o switch_vga_mode.o
 	$(LD) -o 5M_mem_rw_mix_c_vga.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw_mix_c_vga.elf $@
 5M_mem_rw_mix_c_vga.o: 5M_mem_rw_mix_c_vga.S config.h

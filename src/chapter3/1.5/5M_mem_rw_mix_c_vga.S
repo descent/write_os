@@ -28,7 +28,8 @@
 /* Global Descriptor Table */
 LABEL_GDT:          Descriptor  0,                        0, 0
 LABEL_DESC_NORMAL:  Descriptor  0,         0xffff, DA_DRW    # Normal descriptor is for back to real mode.
-LABEL_DESC_CODE32:  Descriptor  0,       (SegCode32Len - 1), (DA_C + DA_32)
+#LABEL_DESC_CODE32:  Descriptor  0,       (SegCode32Len - 1), (DA_C + DA_32)
+LABEL_DESC_CODE32:  Descriptor  0,       0xffffff, (DA_C + DA_32)
 LABEL_DESC_CODE16:  Descriptor    0,         0xffff, DA_C      # 非一致程式碼段, 16
 LABEL_DESC_DATA:   Descriptor    0,      DataLen-1, DA_DRW    # Data
 LABEL_DESC_STACK:  Descriptor    0,     TopOfStack, DA_DRWA+DA_32 # Stack, 32 位
@@ -225,8 +226,8 @@ LABEL_SEG_CODE32:
 #        movb $0xef, %al
 #	call	kmain
 #	call	init_graph_vga
-        pushl   %ebp
-        movl    %esp, %ebp
+#        pushl   %ebp
+#        movl    %esp, %ebp
 
 	call	text_test
 	#call	vga_test
@@ -390,7 +391,7 @@ StrTest:                .ascii "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0"
 .set DataLen, .  - LABEL_DATA
 /* 32-bit global stack segment. */
 LABEL_STACK:
-.space  512, 0
+.space  1024, 0
 .set    TopOfStack, (. - LABEL_STACK - 1)
 
 # END of [SECTION .data1]
