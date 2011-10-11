@@ -316,6 +316,7 @@ void init_palette(void)
   }
   #endif
 
+  #if 0
   set_palette(0, 0x00, 0x00, 0x00);
   set_palette(1, 0xff, 0x00, 0x00);
   set_palette(2, 0x00, 0xff, 0x00);
@@ -323,7 +324,6 @@ void init_palette(void)
   set_palette(4, 0x00, 0x00, 0xff);
   set_palette(5, 0xff, 0x00, 0xff);
   set_palette(6, 0x00, 0xff, 0xff);
-  #if 0
   set_palette(7, 0xff, 0xff, 0xff);
   set_palette(8, 0xc6, 0xc6, 0xc6);
   set_palette(9, 0x84, 0x00, 0x00);
@@ -542,6 +542,13 @@ int text_test()
     int i=0;
     u32 *vram = (u32*) 0xa0000;
 
+#if 1
+      set_palette(0, 0x0, 0x0, 0x0);
+      set_palette(1, 0xff, 0x0, 0x0);
+      set_palette(2, 0x00, 0xff, 0x0);
+#endif
+  //init_palette();
+#if 0
     for (i=0xa0000; i <= 0xaffff; ++i)
     {
       //unsigned char color[] = {0xff, 0xff, 0xff};
@@ -549,9 +556,18 @@ int text_test()
       //set_palette(5, 0xff, 0, 0);
       //set_palette(0, 0xff, 0xff, 0xff);
       //write_mem8(i, 15);
-      write_mem8(i, 15);
+      //write_mem8(i, 15);
+      write_mem8(i, 1);
       //write_mem8(i, 2);
     }
+#endif
+
+           write_mem8(0xa0000 + (0 + 0), 1);
+           write_mem8(0xa0000 + (2*320 + 0), 1);
+           write_mem8(0xa0000 + (4 * 320 + 0), 1);
+           write_mem8(0xa0000 + (6 * 320 + 0), 1);
+           write_mem8(0xa0000 + (8 * 320 + 0), 1);
+
 }
     #endif
     #endif
