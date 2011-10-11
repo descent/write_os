@@ -12,7 +12,8 @@
 #.code16gcc
 .text
 LABEL_STACK:
-.space  256, 0
+#.align 8
+.space  512, 0x12
 .set    TopOfStack, (. - LABEL_STACK - 1)
     jmp LABEL_BEGIN     /* jump over the .data section. */
 
@@ -29,6 +30,10 @@ LABEL_BEGIN:
   mov %ax,%gs
   mov $0x0,%edi
 
+#  mov (%esp), %eax
+#  call DispAX
+#  mov %esp, %eax
+#  call DispAX
 
 #    mov     %cs,%ax
 #    call DispAX
@@ -59,7 +64,13 @@ LABEL_BEGIN:
 #	movl	$2, (%esp)
 #	calll    write_mem8
 #	movl	$0xab, %eax
+#    mov %esp, %eax
+#    calll DispAX
     calll kmain
+#    calll ckmain
+#    calll DispAX
+  #calll    write_mem8
+  #calll    write_mem8
 
 #  popl %ecx # 1 arg, addr
 #  popl %eax # 2 arg, char
@@ -73,30 +84,53 @@ LABEL_BEGIN:
         int     $0x21             #  回到 DOS
 
     #jmp     .
+write_mem16:
+  nop
+  nop
 .globl write_mem8
 write_mem8:
+  pushl	%ebp
+  mov %esp, %ebp
 #    pushl %ecx
 #    pushl %eax
+
+#    mov     (%esp),%eax
+#    callw DispAX
+
+#    push %ecx
+#    push %ebp
+#    mov %esp, %ebx
+#    mov %eax, %ebp
 
 #    mov     %esp,%eax
 #    callw DispAX
 
-#    pushl %ebp
-#    mov %esp, %ebx
-#    mov %eax, %ebp
-
-#    mov     %ebp,%eax
+#    mov     %esp,%eax
+#    callw DispAX
+#    subl     $4, %esp
+#    mov     %esp,%eax
+#    callw DispAX
+    #mov %ebp,(%esp)
+#    mov (%esp), %eax
+#    callw DispAX
+#    mov %ebp,%eax
 #    callw DispAX
 
+ # mov $0xb800,%ax
+ # mov %ax,%es
 
-#  mov $0xb800,%ax
-#  mov %ax,%es
+#  mov 4(%esp), %ecx; # 1st arg, address
+#  movb 8(%esp), %al; # 2nd arg, char
 
-  mov 4(%esp), %ecx; # 1st arg, address
-  movb 8(%esp), %al; # 2nd arg, char
+#  mov 8(%esp), %ecx; # 1st arg, address
+#  movb 12(%esp), %al; # 2nd arg, char
 
-#  mov 8(%ebp), %ecx; # 1nd arg, address
-#  movb 12(%ebp), %al; # 2nd arg, char
+#  movw %esp, %eax; # 2nd arg, char
+#  movb 8(%esp), %al; # 2nd arg, char
+#  call DispAX
+
+  mov 8(%ebp), %ecx; # 1nd arg, address
+  movb 12(%ebp), %al; # 2nd arg, char
 #  mov 4(%esp), %eax; # 1nd arg, address
 #  call DispAX
 
@@ -109,6 +143,7 @@ write_mem8:
   movb %al, %gs:(%ecx)
 #    popl %ecx
 #    popl %eax
+	popl	%ebp
   ret
 
 .globl DispAL
@@ -188,6 +223,22 @@ DispAX:
 #    int     $0x10
 #    ret
 .globl BootMessage
-BootMessage:.ascii "Hello, OS world!"
+BootMessage:.ascii "Hello, OS wo"
+nop
+nop
+
+.globl ckmain
+#	.type	ckmain, @function
+ckmain:
+	pushl	%ebp
+	movl	%esp, %ebp
+#	subl	$24, %esp
+	movl	$0x42, 4(%esp)
+#  movl %esp, %eax; # 2nd arg, char
+#  calll DispAX
+	movl	$166, (%esp)
+	calll	write_mem8
+	leave
+	ret
 #.org 510
 #.word 0xaa55

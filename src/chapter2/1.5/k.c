@@ -12,6 +12,7 @@ void DispAX();
 //void kmain( void* mbd, unsigned int magic )
 void kmain(void)
 {
+#if 1
   int i=0;
   u8 ch='A';
 
@@ -21,7 +22,9 @@ void kmain(void)
     if (ch > 'Z')
       ch='A';
   }
- 
+#else
+  write_mem8(160*2, 'N');
+#endif 
 //  u8 b[10];
   
 //  b[0]='Z';
@@ -35,5 +38,8 @@ void kmain(void)
   //DispAX();
 
   //*BootMessage='A';
-  //write_mem8(160*2, 'N');
+  #if 0
+  write_mem8(160*2, 'N');
+  write_mem8(160*3, 'Z');
+  #endif
 }
