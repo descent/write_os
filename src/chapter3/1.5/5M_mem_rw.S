@@ -58,6 +58,8 @@ LABEL_BEGIN:
     movw     $0x100, %sp
     nop
     movw %ax, (LABEL_GO_BACK_TO_REAL+3) # modify segment value, indexed memory mode, ref  professional aeesmbly language p 102.
+    movw     %sp, (SPValueInRealMode)
+
 
     /* Initialize 16-bits code segment descriptor. */
     xor     %eax, %eax
@@ -134,6 +136,8 @@ LABEL_REAL_ENTRY:               # 從保護模式跳回到實模式就到了這�
         mov     %ax, %ss
 
 #        mov     sp, [SPValueInRealMode]
+        movw     (SPValueInRealMode), %sp
+
 
         in      $0x92, %al
         and     $0b11111101, %al   #  close A20 line

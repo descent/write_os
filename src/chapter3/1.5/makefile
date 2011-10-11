@@ -39,7 +39,7 @@ ldt.o: ldt.S
 	$(CC) $(CFLAGS) $<
 
 #5M_mem_rw.com: 5M_mem_rw.o k.o
-5Mrw.com: 5M_mem_rw.o 
+5mrw.com: 5M_mem_rw.o 
 	$(LD) -o 5M_mem_rw.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw.elf $@
 
