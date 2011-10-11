@@ -1,8 +1,15 @@
+typedef char byte;
+typedef unsigned char u8;
+typedef unsigned short int u16;
+typedef unsigned int u32;
 
-void kmain( void* mbd, unsigned int magic )
-//void kmain()
+void write_mem8(u32 addr, u8 data); // assembly function.
+
+
+//void kmain( void* mbd, unsigned int magic )
+void kmain(void)
 {
-#if 1
+#if 0
    void DispAL(void);
    mbd=0;
    magic=0;
@@ -24,6 +31,10 @@ void kmain( void* mbd, unsigned int magic )
    videoram[160] = 65; /* character 'A' */
    videoram[161] = 0x07; /* light grey (7) on black (0). */
    asm("movb $0xab, %al");
-   DispAL();
+   //DispAL();
 #endif
+  //asm("movb $0xab, %al");
+  write_mem8(160*2+2, 'N');
+   //asm("movb $0xab, %al");
+
 }

@@ -27,7 +27,8 @@
 /* Global Descriptor Table */
 LABEL_GDT:          Descriptor  0,                        0, 0
 LABEL_DESC_NORMAL:  Descriptor  0,         0xffff, DA_DRW    # Normal descriptor is for back to real mode.
-LABEL_DESC_CODE32:  Descriptor  0,       (SegCode32Len - 1), (DA_C + DA_32)
+#LABEL_DESC_CODE32:  Descriptor  0,       (SegCode32Len - 1), (DA_C + DA_32)
+LABEL_DESC_CODE32:  Descriptor  0,       0xfffff, (DA_C + DA_32)
 LABEL_DESC_CODE16:  Descriptor    0,         0xffff, DA_C      # 非一致程式碼段, 16
 LABEL_DESC_DATA:   Descriptor    0,      DataLen-1, DA_DRW    # Data
 LABEL_DESC_STACK:  Descriptor    0,     TopOfStack, DA_DRWA+DA_32 # Stack, 32 位
@@ -48,6 +49,26 @@ GdtPtr: .2byte  (GdtLen - 1)  /* GDT Limit */
 .set SelectorTest, (LABEL_DESC_TEST         - LABEL_GDT)
 .set    SelectorVideo,  (LABEL_DESC_VIDEO  - LABEL_GDT)
 
+#[SECTION .data1]         ; 資料段
+#ALIGN   32
+#[BITS   32]
+LABEL_DATA:
+SPValueInRealMode: .2byte 0x0
+# string
+PMMessage:              .ascii      "In Protect Mode now. ^-^\0"   # 在保護模式中顯示
+.set    OffsetPMMessage, (PMMessage - LABEL_DATA)
+#StrTest:                .ascii "B\0"
+StrTest:                .ascii "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0"
+#OffsetStrTest           equ     StrTest - $$
+.set OffsetStrTest , (StrTest - LABEL_DATA)
+#DataLen                 equ     $ - LABEL_DATA
+.set DataLen, .  - LABEL_DATA
+/* 32-bit global stack segment. */
+LABEL_STACK:
+.space  512, 0x12
+.set    TopOfStack, (. - LABEL_STACK - 1)
+
+# END of [SECTION .data1]
 
 /* Program starts here. */
 LABEL_BEGIN:
@@ -197,11 +218,20 @@ LABEL_SEG_CODE32:
 #push  %eax                       # Multiboot magic number
 #   push  %ebx                       # Multiboot data structure
 
-        movb $0xef, %al
-	call	kmain
+#        movb $0xef, %al
+#  movl    $66, 4(%esp)
+#  movl    $2, (%esp)
+
+  call kmain
+#  call DispAL
+#  call ckmain
+
+#  pushl  $66
+#  pushl  $2
+#  calll write_mem8
 	#call	init_graph_vga
-        movb $0xa9, %al
-	call	DispAL
+#        movb $0xa9, %al
+#	call	DispAL
 /*
 	call	DispReturn
         #movb $0xa9, %al
@@ -257,6 +287,14 @@ TestWrite:
 	popl	%esi
 	ret
 # TestWrite 結束----------------------------------------------------------
+
+# ref 30 天打造OS, page 80
+.globl write_mem8
+write_mem8:
+  mov 4(%esp), %ecx;
+  movb 8(%esp), %al;
+  movb %al, %gs:(%ecx)
+  ret
 
 
 # ------------------------------------------------------------------------
@@ -320,41 +358,22 @@ DispReturn:
 	ret
 # DispReturn 結束---------------------------------------------------------
 
-/*
-kmain:
-        pushl   %ebp
-        movl    %esp, %ebp
-        popl    %ebp
-        ret
-        .size   kmain, .-kmain
-        .ident  "GCC: (Ubuntu/Linaro 4.5.2-8ubuntu4) 4.5.2"
-*/
-#        .section        .note.GNU-stack,"",@progbits
+.globl ckmain
+	.type	ckmain, @function
+ckmain:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$24, %esp
+	movl	$78, 4(%esp)
+	movl	$320, (%esp)
+	call	write_mem8
+	leave
+	ret
 
 
 /* Get the length of 32-bit segment code. */
 .set    SegCode32Len, . - LABEL_SEG_CODE32
 
-#[SECTION .data1]         ; 資料段
-#ALIGN   32
-#[BITS   32]
-LABEL_DATA:
-SPValueInRealMode: .2byte 0x0
-# string
-PMMessage:              .ascii      "In Protect Mode now. ^-^\0"   # 在保護模式中顯示
-.set    OffsetPMMessage, (PMMessage - LABEL_DATA)
-#StrTest:                .ascii "B\0"
-StrTest:                .ascii "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0"
-#OffsetStrTest           equ     StrTest - $$
-.set OffsetStrTest , (StrTest - LABEL_DATA)
-#DataLen                 equ     $ - LABEL_DATA
-.set DataLen, .  - LABEL_DATA
-/* 32-bit global stack segment. */
-LABEL_STACK:
-.space  512, 0
-.set    TopOfStack, (. - LABEL_STACK - 1)
-
-# END of [SECTION .data1]
 
 
 LABEL_SEG_CODE16:

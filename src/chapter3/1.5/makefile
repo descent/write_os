@@ -39,16 +39,16 @@ ldt.o: ldt.S
 	$(CC) $(CFLAGS) $<
 
 #5M_mem_rw.com: 5M_mem_rw.o k.o
-5M_mem_rw.com: 5M_mem_rw.o 
+5Mrw.com: 5M_mem_rw.o 
 	$(LD) -o 5M_mem_rw.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw.elf $@
 
 5M_mem_rw.o: 5M_mem_rw.S
 	$(CC) $(CFLAGS) $<
 
-5M_mem_rw_mix_c.com: 5M_mem_rw_mix_c.o k.o 
-	$(LD) -o 5M_mem_rw.elf $(LDFLAGS_DOS) $^
-	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw.elf $@
+5mc.com: 5M_mem_rw_mix_c.o k.o 
+	$(LD) -o 5mc.elf $(LDFLAGS_DOS) $^
+	$(OBJCOPY) $(TRIM_FLAGS) 5mc.elf $@
 
 5M_mem_rw_mix_c.o: 5M_mem_rw_mix_c.S
 	$(CC) $(CFLAGS) $<
