@@ -34,6 +34,8 @@ LABEL_DESC_DATA:   Descriptor    0,      DataLen-1, DA_DRW    # Data
 LABEL_DESC_STACK:  Descriptor    0,     TopOfStack, DA_DRWA+DA_32 # Stack, 32 位
 LABEL_DESC_TEST: Descriptor 0x500000, 0xffff, DA_DRW
 LABEL_DESC_VIDEO:   Descriptor  0xB8000, 0xffff, DA_DRW
+LABEL_DESC_TEST_DATA:   Descriptor    0,      0xffffffff, DA_DRW    # Data
+
 
 .set GdtLen, (. - LABEL_GDT)  /* GDT Length */
 
@@ -48,12 +50,13 @@ GdtPtr: .2byte  (GdtLen - 1)  /* GDT Limit */
 .set SelectorStack, (LABEL_DESC_STACK        - LABEL_GDT)
 .set SelectorTest, (LABEL_DESC_TEST         - LABEL_GDT)
 .set    SelectorVideo,  (LABEL_DESC_VIDEO  - LABEL_GDT)
+.set    SelectorTestData,  (LABEL_DESC_TEST_DATA  - LABEL_GDT)
 
 #[SECTION .data1]         ; 資料段
 #ALIGN   32
 #[BITS   32]
 LABEL_DATA:
-SPValueInRealMode: .2byte 0x0
+SPValueInRealMode: .2byte 0x1234
 # string
 PMMessage:              .ascii      "In Protect Mode now. ^-^\0"   # 在保護模式中顯示
 .set    OffsetPMMessage, (PMMessage - LABEL_DATA)
@@ -62,6 +65,20 @@ StrTest:                .ascii "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0"
 #OffsetStrTest           equ     StrTest - $$
 .set OffsetStrTest , (StrTest - LABEL_DATA)
 #DataLen                 equ     $ - LABEL_DATA
+	#.section	.rodata
+	#.align 4
+	#.type	chor_regs, @object
+	#.size	chor_regs, 8
+chor_regs:
+	.long	320
+	.long	0x5a # Z
+   var1:
+      .int 40
+   var2:
+      .int 20
+   var3:
+      .int 30
+
 .set DataLen, .  - LABEL_DATA
 /* 32-bit global stack segment. */
 LABEL_STACK:
@@ -225,6 +242,18 @@ LABEL_SEG_CODE32:
   call kmain
 #  call DispAL
 #  call ckmain
+  call cckmain
+  #movzbl chor_regs, %eax
+
+#	mov	$(SelectorTestData), %ax
+#	mov	%ax, %es
+
+#  mov $(var1), %ebx
+#  movw %es:(LABEL_DATA+100), %eax
+  #movw %ds:(SPValueInRealMode), %eax
+  #movl $(SPValueInRealMode), %eax
+#  movl (var1-LABEL_DATA), %eax
+#  call DispAL
 
 #  pushl  $66
 #  pushl  $2
@@ -370,9 +399,25 @@ ckmain:
 	leave
 	ret
 
+.globl cckmain
+	.type	cckmain, @function
+cckmain:
+	pushl	%ebp
+	movl	%esp, %ebp
+	subl	$24, %esp
+	movl	(chor_regs+4-LABEL_DATA), %eax
+	movzbl	%al, %edx
+	movl	(chor_regs-LABEL_DATA), %eax
+	movl	%edx, 4(%esp)
+	movl	%eax, (%esp)
+	call	write_mem8
+	leave
+	ret
+
 
 /* Get the length of 32-bit segment code. */
 .set    SegCode32Len, . - LABEL_SEG_CODE32
+
 
 
 
