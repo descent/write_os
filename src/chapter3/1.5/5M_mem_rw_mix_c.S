@@ -59,6 +59,7 @@ LABEL_DATA:
 SPValueInRealMode: .2byte 0x1234
 # string
 PMMessage:              .ascii      "In Protect Mode now. ^-^\0"   # 在保護模式中顯示
+#.set    OffsetPMMessage, (PMMessage - LABEL_DATA)
 .set    OffsetPMMessage, (PMMessage - LABEL_DATA)
 #StrTest:                .ascii "B\0"
 StrTest:                .ascii "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0"
@@ -79,7 +80,8 @@ chor_regs:
    var3:
       .int 30
 
-.set DataLen, .  - LABEL_DATA
+#.set DataLen, .  - LABEL_DATA 
+.set DataLen, .  - LABEL_BEGIN
 /* 32-bit global stack segment. */
 LABEL_STACK:
 .space  512, 0x12
@@ -119,10 +121,22 @@ LABEL_BEGIN:
     movb    %ah, (LABEL_DESC_CODE32 + 7)
 
 	# initialize data segment descriptor
+#	xor	%eax, %eax
+#	mov	%ds, %ax
+#	shl	$4, %eax
+#	addl	$(LABEL_DATA), %eax
+#	movw	%ax, (LABEL_DESC_DATA + 2)
+#	shr	$16, %eax
+#	movb	%al, (LABEL_DESC_DATA + 4)
+#	movb	%ah, (LABEL_DESC_DATA + 7)
+
+	# initialize data segment descriptor
+        # for c runtime environment, base changes from %cs:LABEL_DATA to %cs:0
 	xor	%eax, %eax
 	mov	%ds, %ax
 	shl	$4, %eax
-	addl	$(LABEL_DATA), %eax
+	addl	$0, %eax
+#	subl	$0x100, %eax
 	movw	%ax, (LABEL_DESC_DATA + 2)
 	shr	$16, %eax
 	movb	%al, (LABEL_DESC_DATA + 4)
@@ -215,7 +229,9 @@ LABEL_SEG_CODE32:
 	movb	$0x0c, %ah # 0000: 黑底    1100: 紅字
 	xor	%esi, %esi
 	xor	%edi, %edi
-	mov	$(OffsetPMMessage), %esi	# data string offset
+	mov	$(OffsetPMMessage+LABEL_DATA), %esi	# data string offset
+#	mov	(PMMessage), %esi # why use this will get fail
+#	mov	(%eax), %esi	# data string offset
 	movl	$((80 * 10 + 0) * 2), %edi	# 目的資料偏移。螢幕第 10 行, 第 0 列。
 	cld # Clear Direction Flag, ref: http://www.fermi.mn.it/linux/quarta/x86/cld.htm
             # After CLD is executed, string operations will increment the index 
@@ -405,9 +421,11 @@ cckmain:
 	pushl	%ebp
 	movl	%esp, %ebp
 	subl	$24, %esp
-	movl	(chor_regs+4-LABEL_DATA), %eax
+	#movl	(chor_regs+4-LABEL_DATA), %eax
+	movl	(chor_regs+4), %eax
 	movzbl	%al, %edx
-	movl	(chor_regs-LABEL_DATA), %eax
+	#movl	(chor_regs-LABEL_DATA), %eax
+	movl	(chor_regs), %eax
 	movl	%edx, 4(%esp)
 	movl	%eax, (%esp)
 	call	write_mem8

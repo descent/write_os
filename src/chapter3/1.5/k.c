@@ -5,10 +5,17 @@ typedef unsigned int u32;
 
 void write_mem8(u32 addr, u8 data); // assembly function.
 
+#define BASE 160*6
+
+static const u8 str[]="I am c function";
 
 //void kmain( void* mbd, unsigned int magic )
 void kmain(void)
 {
+  int i=0;
+
+  for (i=0 ; str[i]!=0 ; ++i)
+    write_mem8(BASE+i*2, str[i]);
 #if 0
    void DispAL(void);
    mbd=0;
@@ -34,7 +41,7 @@ void kmain(void)
    //DispAL();
 #endif
   //asm("movb $0xab, %al");
-  write_mem8(160*2+2, 'N');
+  //write_mem8(160*2+2, 'N');
    //asm("movb $0xab, %al");
 
 }
