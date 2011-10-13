@@ -230,8 +230,9 @@ LABEL_SEG_CODE32:
 	xor	%esi, %esi
 	xor	%edi, %edi
 #	mov	$(OffsetPMMessage+LABEL_DATA), %esi	# data string offset, mov    $0x153,%esi
-	mov	(PMMessage), %esi # why use this will get fail, because       mov     0x153,%esi, 
+#	mov	(PMMessage), %esi # why use this will get fail, because       mov     0x153,%esi, 
                                   # 這是把位址 0x153 的值 assign 給 %esi, 不是 0x153 這個值 assign 給 %esi。
+	mov	$(PMMessage), %esi # add $ prefix is ok.
                                                                                                   
 #	mov	(%eax), %esi	# data string offset
 	movl	$((80 * 10 + 0) * 2), %edi	# 目的資料偏移。螢幕第 10 行, 第 0 列。
