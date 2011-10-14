@@ -258,6 +258,11 @@ LABEL_SEG_CODE32:
 #  movl    $66, 4(%esp)
 #  movl    $2, (%esp)
 
+#ifdef C_ACCESS_POINTER
+	mov	$(SelectorTestData), %ax
+	mov	%ax, %ds
+#endif
+
   call kmain
 #  call DispAL
 #  call ckmain

@@ -16,6 +16,13 @@ void kmain(void)
 
   for (i=0 ; str[i]!=0 ; ++i)
     write_mem8(BASE+i*2, str[i]);
+
+#ifdef C_ACCESS_POINTER
+  u8 *vaddr=(u8 *)(0xb8000+160);
+
+  *vaddr='E';
+#endif
+
 #if 0
    void DispAL(void);
    mbd=0;
