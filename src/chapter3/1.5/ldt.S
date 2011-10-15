@@ -18,6 +18,8 @@
 
 #include "pm.h"
 
+#define video_addr_offset (video_addr-LABEL_DATA)
+
 .code16
 .text
     jmp LABEL_BEGIN     /* jump over the .data section. */
@@ -238,6 +240,7 @@ LABEL_SEG_CODE32:
         movw $0xabcd, %ax
 	call	DispAX
 
+
 	movl	$(80*(1-1)*2 + (1-1)*2), (video_addr_offset) # calu position.
 	#movl	$0, (video_addr_offset) # calu position.
         movw $0x1234, %ax
@@ -246,7 +249,7 @@ LABEL_SEG_CODE32:
   
   mov $(SelectorLDT), %ax
   lldt %ax
-  ljmp $(SelectorLDTCodeA), $0
+  jmp $(SelectorLDTCodeA), $0
 
 
 /*
@@ -283,35 +286,6 @@ LABEL_SEG_CODE32:
    # ljmpl     $SelectorCode16,$0
     # jmpl     $SelectorCode16,$0 # it works
 
-LABEL_CODE_A:
-#if 0
-# intel syntax
-        mov     ax, SelectorVideo
-        mov     gs, ax                  ; 視頻段選擇子(目的)
-
-        mov     edi, (80 * 12 + 0) * 2  ; 螢幕第 10 行, 第 0 列。
-        mov     ah, 0Ch                 ; 0000: 黑底    1100: 紅字
-        mov     al, 'L'
-        mov     [gs:edi], ax
-#else
-# at&t syntax
- #if 1
-  mov $(SelectorVideo), %ax
-  mov %ax, %gs
-  mov $((80 * 12 + 0) * 2), %edi
-  mov $0x0c, %ah
-  mov $'L', %al
-  mov %ax, %gs:(%edi)
-  #else
-  /* can call DispAL function */
-  movb $0xef, %al
-  call DispAL
-  #endif
-  /* jump to real mode code16 and return to dos. */
-  ljmpl     $SelectorCode16,$0
-
-#endif
-.set CodeALen, (. - LABEL_CODE_A)  
 
 
 # ------------------------------------------------------------------------
@@ -488,6 +462,35 @@ DispReturn:
 	popl	%eax
 	ret
 # DispReturn 結束---------------------------------------------------------
+LABEL_CODE_A:
+#if 0
+# intel syntax
+        mov     ax, SelectorVideo
+        mov     gs, ax                  ; 視頻段選擇子(目的)
+
+        mov     edi, (80 * 12 + 0) * 2  ; 螢幕第 10 行, 第 0 列。
+        mov     ah, 0Ch                 ; 0000: 黑底    1100: 紅字
+        mov     al, 'L'
+        mov     [gs:edi], ax
+#else
+# at&t syntax
+ #if 1
+  mov $(SelectorVideo), %ax
+  mov %ax, %gs
+  mov $((80 * 12 + 0) * 2), %edi
+  mov $0x0c, %ah
+  mov $'L', %al
+  mov %ax, %gs:(%edi)
+  #else
+  /* can call DispAL function */
+  movb $0xef, %al
+  call DispAL
+  #endif
+  /* jump to real mode code16 and return to dos. */
+  ljmpl     $SelectorCode16,$0
+
+#endif
+.set CodeALen, (. - LABEL_CODE_A)  
 
 /*
 kmain:
@@ -517,7 +520,7 @@ StrTest:                .ascii "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0"
 #OffsetStrTest           equ     StrTest - $$
 .set OffsetStrTest , (StrTest - LABEL_DATA)
 #DataLen                 equ     $ - LABEL_DATA
-video_addr_offset:              .int    0
+video_addr:              .int    0
 .set DataLen, .  - LABEL_DATA
 /* 32-bit global stack segment. */
 LABEL_STACK:
