@@ -15,13 +15,6 @@
   \usepackage[pdftex]{graphicx}
   \graphicspath{{images/}}
 \else
-  \RequirePackage[dvipdfm, CJKbookmarks, bookmarks=true, bookmarksnumbered=true%
-                unicode,%
-             colorlinks,%
-         linkcolor=blue,%
-             hyperindex,%
-       plainpages=false,%
-      pdfstartview=FitH]{hyperref}
   \AtBeginDvi{\special{pdf:tounicode UTF8-UCS2}}
   \usepackage[dvipdfm]{graphicx}
   \graphicspath{{images/}}
@@ -40,6 +33,25 @@
 \usepackage[caption=false,font=footnotesize]{subfig}
 %\usepackage{fixltx2e}
 %\usepackage{stfloats}
+
+\usepackage{ucs}
+\usepackage[utf8]{inputenc}
+%\begin{comment}
+\usepackage{hyperref} % 最好保證 hyperref 是最後載入的 macro
+\hypersetup{%
+%  dvipdfmx,% 设定要使用的 driver 为 dvipdfmx
+  dvips,% 设定要使用的 driver 为 dvipdfmx
+  unicode={true},% 使用 unicode 来编码 PDF 字符串
+  pdfstartview={FitH},% 文档初始视图为匹配宽度
+  bookmarksnumbered={true},% 书签附上章节编号
+  bookmarksopen={true},% 展开书签
+  pdfborder={0 0 0},% 链接无框
+  pdftitle={使用開源軟件-自己動手寫操作系統},
+  pdfauthor={楊文博},
+  pdfcreator={ps2pdf},
+  pdfproducer={PDF 制作程序},% 这个好像没起作用？
+}
+
 
 %
 % we use CJK as default environment
