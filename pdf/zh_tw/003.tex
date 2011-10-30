@@ -468,8 +468,10 @@ JMP~和~CALL~指令可以實現以下~4~種形式的轉移：
 
 使用~CALL~或者~JMP~指令訪問~call gate~進行控制權轉移時,~權限檢查的規則有所不同,~如表~\ref{callgate_rules}~所示：
 
-\begin{center}\begin{longtable}{|l|l|}
-\caption[]{~call gate~權限檢查規則}\label{callgate_rules}\\
+\begin{table}[htdp]
+\caption{call gate 權限檢查規則}\label{callgate_rules}
+\begin{center}
+\begin{tabular}{lllll}
 \hline
 \textbf{指令} & \textbf{權限檢查規則}\\
 \hline
@@ -480,7 +482,9 @@ JMP  & CPL $\le$ ~call gate~~DPL; RPL $\le$ ~call gate~~DPL\\
      & 當目標段是一致程式碼段時：目標段~DPL $\le$ CPL\\
      & 當目標段是非一致程式碼段時：目標段~DPL = CPL\\
 \hline
-\end{longtable}\end{center}
+\end{tabular}
+\end{center}
+\end{table}
 
 這張表內容雖然不多,~但也不容易很快理解。這裡我們應該著重看目標段~DPL~和~CPL~的比較,~這才是~call gate~權限檢驗的特點所在。總的來說,~使用~call gate~需要目標段的~DPL~小于或等于~CPL~,~意思就是要轉移的目標段權限高于當前權限。這與我們在本節開頭看到的一般轉移的權限檢查有非常明顯的不同。除此之外剩下的檢查就是對~call gate~訪問的檢查了,~這種權限檢查和訪問一個資料段時進行的權限檢查的規則是一樣的,~我們已經熟知了。
 
