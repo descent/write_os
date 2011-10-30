@@ -34,18 +34,26 @@
 %\usepackage{fixltx2e}
 %\usepackage{stfloats}
 
+\usepackage[hyphens]{url}
 \usepackage{ucs}
 \usepackage[utf8]{inputenc}
 %\begin{comment}
-\usepackage{hyperref} % 最好保證 hyperref 是最後載入的 macro
+\usepackage[breaklinks]{hyperref} % 最好保證 hyperref 是最後載入的 macro
+\usepackage{breakurl}
 \hypersetup{%
 %  dvipdfmx,% 设定要使用的 driver 为 dvipdfmx
   dvips,% 设定要使用的 driver 为 dvipdfmx
+  bookmarks={true},
   unicode={true},% 使用 unicode 来编码 PDF 字符串
+  colorlinks={true},%
+  hyperindex,%
   pdfstartview={FitH},% 文档初始视图为匹配宽度
   bookmarksnumbered={true},% 书签附上章节编号
   bookmarksopen={true},% 展开书签
   pdfborder={0 0 0},% 链接无框
+  plainpages=false,%  
+  CJKbookmarks=ture,% 
+  bookmarksnumbered=true,%
   pdftitle={使用開源軟件-自己動手寫操作系統},
   pdfauthor={楊文博},
   pdfcreator={ps2pdf},
