@@ -245,6 +245,16 @@ LABEL_SEG_CODE32:
 	#movl	$0, (video_addr_offset) # calu position.
         movw $0x1234, %ax
 	call	DispAX
+#ifdef TEST_LEA
+	movl	$(80*(4-1)*2 + (1-1)*2), (video_addr_offset) # calu position.
+	leal    (video_addr), %eax
+	call	DispAX
+
+	movl	$(80*(6-1)*2 + (1-1)*2), (video_addr_offset) # calu position.
+	movl	$(video_addr_offset), %eax
+	call	DispAX
+#endif
+
 
   
   mov $(SelectorLDT), %ax
