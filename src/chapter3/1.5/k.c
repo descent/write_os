@@ -7,15 +7,56 @@ void write_mem8(u32 addr, u8 data); // assembly function.
 
 #define BASE 160*6
 
+#define TEST_FUNC
+
 static const u8 str[]="I am c function";
+
+void hex2char(u8 h, u8 *ch)
+{
+#if 1
+  // high 4 bit
+  //ch[1] 
+  if (((h >> 4)& 0x0f) >= 0xa) // a-f
+  {
+    ch[1] = ((h >> 4) & 0x0f) + 0x57;
+  }
+  else // 0-9
+  {
+    ch[1] = ((h >> 4) & 0x0f) + 0x30;
+  }
+#endif
+  // low 4 bit
+  if ((h & 0x0f) >= 0xa) // a-f
+  {
+    ch[0] = (h & 0x0f) + 0x57;
+  }
+  else // 0-9
+  {
+    ch[0] = (h & 0x0f) + 0x30;
+  }
+
+}
 
 //void kmain( void* mbd, unsigned int magic )
 void kmain(void)
 {
+
+// normal test
+#if 0
   int i=0;
 
   for (i=0 ; str[i]!=0 ; ++i)
     write_mem8(BASE+i*2, str[i]);
+#endif
+
+#ifdef TEST_FUNC
+  u8 ch[2]={'a','b'}; // 97, 98
+
+  hex2char(0x9c, ch);
+  write_mem8(BASE, ch[1]);
+  write_mem8(BASE+2, ch[0]);
+
+#endif
 
 #ifdef C_ACCESS_POINTER
   u8 *vaddr=(u8 *)(0xb8000+160);

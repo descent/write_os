@@ -53,7 +53,9 @@ ldt.o: ldt.S
 5M_mem_rw_mix_c.o: 5M_mem_rw_mix_c.S
 	$(CC) $(CFLAGS) $<
 
-k.o: k.c
+k.s: k.c
+	gcc -Wall -Wextra -Werror -nostdlib -nostartfiles -nodefaultlibs -S $<
+k.o: k.s
 	gcc -Wall -Wextra -Werror -nostdlib -nostartfiles -nodefaultlibs -c $<
 
 LOADER.BIN: loader.S

@@ -15,6 +15,10 @@
 
 #include "pm.h"
 
+#if 0
+#define SSequDS // for c runtime, pass static var to funcion.
+#endif
+
 .code16
 .text
     jmp LABEL_BEGIN     /* jump over the .data section. */
@@ -81,11 +85,11 @@ chor_regs:
       .int 30
 
 #.set DataLen, .  - LABEL_DATA 
-.set DataLen, .  - LABEL_BEGIN
 /* 32-bit global stack segment. */
 LABEL_STACK:
 .space  512, 0x12
 .set    TopOfStack, (. - LABEL_STACK - 1)
+.set DataLen, .  - LABEL_BEGIN
 
 # END of [SECTION .data1]
 
@@ -203,17 +207,22 @@ LABEL_SEG_CODE32:
 
 	mov	$(SelectorData), %ax
 	mov	%ax, %ds			# 資料段選擇子
+#ifdef SSequDS
+	mov	%ax, %ss			# 資料段選擇子
+#endif
+
+#ifndef SSequDS
+	mov	$(SelectorStack), %ax
+	mov	%ax, %ss			# 堆疊段選擇子
+#endif
+
 	mov	$(SelectorTest), %ax
-	mov	%ax, %es			# 測試段選擇子
-
-
+	mov	%ax, %es
 
 
     mov     $(SelectorVideo), %ax
     mov     %ax, %gs                /* Video segment selector(dest) */
 
-	mov	$(SelectorStack), %ax
-	mov	%ax, %ss			# 堆疊段選擇子
 
 	mov	$(TopOfStack), %esp
 
@@ -349,6 +358,30 @@ write_mem8:
   movb %al, %gs:(%ecx)
   ret
 
+.globl DispAX
+DispAX:
+        pushl   %ebx
+        pushl   %ecx
+        pushl   %edx
+
+        movw    %ax, %dx
+        shr     $8, %ax # ah -> al
+        movl    $2, %ecx
+.b:
+        call DispAL
+        movw %dx, %ax
+#        addl    $4, (video_addr_offset)
+#	add	$4, %edi
+        loop .b
+
+        popl    %edx
+        popl    %ecx
+        popl    %ebx
+
+        ret
+# end DispAX
+
+
 
 # ------------------------------------------------------------------------
 # 顯示 AL 中的數字
@@ -385,7 +418,7 @@ DispAL:
 
 	mov	%dl, %al
 	loop	.begin
-	add	$2, %edi
+#	add	$2, %edi
 
 	popl	%edx
 	popl	%ecx
