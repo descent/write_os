@@ -14,6 +14,8 @@ OBJCOPY=objcopy
 
 CFLAGS=-c
 TRIM_FLAGS=-R .pdr -R .comment -R.note -S -O binary
+#SCFLAGS=-fno-builtin -Wall -Wextra -nostdlib -nostartfiles -nodefaultlibs -Werror
+SCFLAGS=-fno-builtin -Wall -Wextra -nostdlib -nostartfiles -nodefaultlibs
 
 LDFILE_BOOT=solrex_x86_boot.ld
 LDFILE_DOS=solrex_x86_dos.ld
@@ -57,9 +59,9 @@ ldt.o: ldt.S
 	$(CC) $(CFLAGS) $<
 
 k.s: k.c
-	gcc -Wall -Wextra -Werror -nostdlib -nostartfiles -nodefaultlibs -S $<
+	gcc $(SCFLAGS) -S $<
 k.o: k.s
-	gcc -Wall -Wextra -Werror -nostdlib -nostartfiles -nodefaultlibs -c $<
+	gcc $(SCFLAGS) -c $<
 
 LOADER.BIN: loader.S
 	$(CC) $(CFLAGS) loader.S
