@@ -39,6 +39,9 @@ ldt.o: ldt.S
 	$(CC) $(CFLAGS) $<
 
 #5M_mem_rw.com: 5M_mem_rw.o k.o
+5mrw.bin: 5M_mem_rw.o 
+	$(LD) -o 5M_mem_rw.elf $(LDFLAGS_BOOT) $^
+	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw.elf $@
 5mrw.com: 5M_mem_rw.o 
 	$(LD) -o 5M_mem_rw.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw.elf $@
