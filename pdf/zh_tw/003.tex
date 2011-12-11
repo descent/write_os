@@ -98,16 +98,16 @@ Intel~的~CPU~在保護模式下是可以選擇打開分頁機制的,~但為了�
 這些東西那麼亂,~難道要每次一點兒一點兒地計算嗎？放心,~程序員自有辦法,~請看下面的程序：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=56, lastline=70]{../../src/chapter3/1/pm.h}
-\codecaption{自動生成段描述符的宏定義(節自 chapter3/1/pm.h)}\label{CHpm_descm}
+\codecaption{自動生成段描述符的巨集定義(節自 chapter3/1/pm.h)}\label{CHpm_descm}
 
-圖~\ref{CHpm_descm}~中所示,~就是自動生成段描述符的匯編宏定義。我們只需要給宏~Descriptor~三個參數：Base（段基址）, Limit（段界限[段長度]）, Attr（段屬性）,~Descriptor~就會自動將三者展開放到段描述符中對應的位置。看看我們在程序中怎麼使用這個宏：
+圖~\ref{CHpm_descm}~中所示,~就是自動生成段描述符的組合語言巨集定義。我們只需要給巨集~Descriptor~三個參數：Base（段基址）, Limit（段界限[段長度]）, Attr（段屬性）,~Descriptor~就會自動將三者展開放到段描述符中對應的位置。看看我們在程序中怎麼使用這個巨集：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=21, lastline=26]{../../src/chapter3/1/loader.S}
-\codecaption{自動生成段描述符的宏使用示例(節自 chapter3/1/loader.S)}\label{CHpm_descmu}
+\codecaption{自動生成段描述符的巨集使用示例(節自 chapter3/1/loader.S)}\label{CHpm_descmu}
 
-圖~\ref{CHpm_descmu}~中,~就利用~Descriptor~宏生成了三個段描述符,~形成了一個~GDT。注意到沒有,~第一個段描述符是空的（參數全為~0）。這裡~LABEL\_DESC\_CODE32~的段基址為~0~是因為我們無法確定它的準確位置,~它將在運行期被填入。
+圖~\ref{CHpm_descmu}~中,~就利用~Descriptor~巨集生成了三個段描述符,~形成了一個~GDT。注意到沒有,~第一個段描述符是空的（參數全為~0）。這裡~LABEL\_DESC\_CODE32~的段基址為~0~是因為我們無法確定它的準確位置,~它將在運行期被填入。
 
-有人可能會產生疑問,~段基址和段界限什麼意思我們都知道了,~那段屬性怎麼回事呢？~DA\_C, DA\_32, DA\_DRW~都是什麼東西啊？是這樣的,~為了避免手動一個一個置段描述符中的~Flag~,~我們預先定義了一些常用屬性,~用的時候只需要將這些屬性加起來作為宏~Descriptor~的參數,~就能將段描述符中的所有~flag~置上（記得~C~語言中~fopen~的參數嗎？）。這些屬性的定義如下（沒必要細看,~用的時候再找即可）：
+有人可能會產生疑問,~段基址和段界限什麼意思我們都知道了,~那段屬性怎麼回事呢？~DA\_C, DA\_32, DA\_DRW~都是什麼東西啊？是這樣的,~為了避免手動一個一個置段描述符中的~Flag~,~我們預先定義了一些常用屬性,~用的時候只需要將這些屬性加起來作為巨集~Descriptor~的參數,~就能將段描述符中的所有~flag~置上（記得~C~語言中~fopen~的參數嗎？）。這些屬性的定義如下（沒必要細看,~用的時候再找即可）：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11, lastline=55]{../../src/chapter3/1/pm.h}
 \codecaption{預先設置的段屬性(節自 chapter3/1/pm.h)}\label{CHpm_segattr}
@@ -293,15 +293,15 @@ NASM~的手冊中說~GAS~沒有提供這條指令的實做,~我就用~.byte~偽�
 
 LDT~的選擇子是與~GDT~選擇子有明顯區別的,~圖~\ref{seg_selector}~清楚地解釋了這一點,~所以指向~LDT~的選擇子都應該將~TI~位置~1~,~在圖~\ref{CHpm_build_ldt}~的最後一行也實現了這一操作。
 
-第三,~在~GDT~中添加~LDT~的段描述符（在圖~\ref{CHpm_add_ds}~中我們已經能看到在~GDT~中添加好了~LDT~的段描述符）,~初始化所有段描述符。由于初始化段描述符屬于重復性工作,~我們在~pm.h~中添加一個匯編宏~\code{InitDesc}~來幫我們做這件事情。
+第三,~在~GDT~中添加~LDT~的段描述符（在圖~\ref{CHpm_add_ds}~中我們已經能看到在~GDT~中添加好了~LDT~的段描述符）,~初始化所有段描述符。由于初始化段描述符屬于重復性工作,~我們在~pm.h~中添加一個組合語言巨集~\code{InitDesc}~來幫我們做這件事情。
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=84, lastline=96]{../../src/chapter3/2/pm.h}
-\codecaption{自動初始化段描述符的宏程式碼(節自 chapter3/2/pm.h)}\label{CHpm_initdesc}
+\codecaption{自動初始化段描述符的巨集程式碼(節自 chapter3/2/pm.h)}\label{CHpm_initdesc}
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=63, lastline=112]{../../src/chapter3/2/loader.S}
 \codecaption{在真實模式程式碼段中初始化所有段描述符(節自 chapter3/2/loader.S)}\label{CHpm_init_dts}
 
-初始化各個段描述符的方式與上一節介紹的初始化~GDT~描述符的方式沒有什麼本質不同,~因為屬性都已經預設好,~運行時只需要將段位址填入描述符中的位址域即可,~程式碼都是重復的。我們引入宏~\code{InitDesc}的幫助,~能大大縮短程式碼長度,~增強程式碼的可讀性。
+初始化各個段描述符的方式與上一節介紹的初始化~GDT~描述符的方式沒有什麼本質不同,~因為屬性都已經預設好,~運行時只需要將段位址填入描述符中的位址域即可,~程式碼都是重復的。我們引入巨集~\code{InitDesc}的幫助,~能大大縮短程式碼長度,~增強程式碼的可讀性。
 
 第四,~進入保護模式下運行的~32~位程式碼段後,~加載~LDT~並跳轉執行~LDT~中包含的程式碼段：
 
@@ -431,16 +431,16 @@ JMP~和~CALL~指令可以實現以下~4~種形式的轉移：
 
 總的來看,~~\code{LABEL\_SEG\_CODECG}~指向的這個段和我們以前為了打印程序運行結果所使用的段沒有本質不同,~為了簡單起見,~這裡我們僅僅讓它打印一個字符~\code{'C'}~就返回。
 
-用目標程式碼段~\code{LABEL\_SEG\_CODECG}~的信息初始化~call gate~的門描述符~\code{LABEL\_CG\_TEST},~以及門選擇子~\code{SelectorCGTest}。與匯編宏~\code{Descriptor}~類似,~我們這裡使用匯編宏~\code{Gate}~來初始化門描述符,~宏~\code{Gate}~的定義可以在頭文件~\code{pm.h}~中找到：
+用目標程式碼段~\code{LABEL\_SEG\_CODECG}~的信息初始化~call gate~的門描述符~\code{LABEL\_CG\_TEST},~以及門選擇子~\code{SelectorCGTest}。與組合語言巨集~\code{Descriptor}~類似,~我們這裡使用組合語言巨集~\code{Gate}~來初始化門描述符,~巨集~\code{Gate}~的定義可以在頭文件~\code{pm.h}~中找到：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=71, lastline=82]{../../src/chapter3/3/pm.h}
-\codecaption{匯編宏~Gate~定義(節自 chapter3/3/pm.h)}\label{CHpm_cg_gate}
+\codecaption{組合語言巨集~Gate~定義(節自 chapter3/3/pm.h)}\label{CHpm_cg_gate}
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=topline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=29, lastline=33]{../../src/chapter3/3/loader.S}
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=bottomline, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=43, lastline=45]{../../src/chapter3/3/loader.S}
 \codecaption{設置~call gate~描述符及選擇子(節自 chapter3/3/loader.S)}\label{CHpm_cg_test}
 
-我們可以看到,~宏~\code{Gate}~的四個參數分別為：段選擇子、偏移量、參數計數和屬性,~它們在存儲空間中的分布與圖~\ref{callgate_desc}~中介紹相同。由于這個例子僅僅介紹~call gate~的簡單使用,~並不涉及權限切換,~所以也不發生堆疊切換,~這裡我們將參數計數設置為~0；門描述符的屬性為~\code{(DA\_386CGate + DPL)}~,~表明它是一個~call gate~（屬性定義見圖~\ref{CHpm_descm}）,~DPL~為~0~,~與我們一直使用的權限相同；目標程式碼段選擇子是~\code{SelectorCodeCG}~,~偏移是~0~,~所以如果該~call gate~被呼叫,~將轉移到目標程式碼段的開頭,~即~\code{LABEL\_SEG\_CODECG}~處開始執行。
+我們可以看到,~巨集~\code{Gate}~的四個參數分別為：段選擇子、偏移量、參數計數和屬性,~它們在存儲空間中的分布與圖~\ref{callgate_desc}~中介紹相同。由于這個例子僅僅介紹~call gate~的簡單使用,~並不涉及權限切換,~所以也不發生堆疊切換,~這裡我們將參數計數設置為~0；門描述符的屬性為~\code{(DA\_386CGate + DPL)}~,~表明它是一個~call gate~（屬性定義見圖~\ref{CHpm_descm}）,~DPL~為~0~,~與我們一直使用的權限相同；目標程式碼段選擇子是~\code{SelectorCodeCG}~,~偏移是~0~,~所以如果該~call gate~被呼叫,~將轉移到目標程式碼段的開頭,~即~\code{LABEL\_SEG\_CODECG}~處開始執行。
 
 使用遠呼叫~lcall~指令呼叫該~call gate~的門選擇子~\code{SelectorCGTest}：
 

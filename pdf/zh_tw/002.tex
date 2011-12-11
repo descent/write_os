@@ -481,7 +481,7 @@ DIR\_FileSize & 0x1c & 4  & 檔案大小 & 0x000000f\\
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=140, lastline=168]{../src/chapter2/2/boot.S}
 \codecaption{加載~loader.bin~的代碼(節自 chapter2/2/boot.S)}\label{CHsmall_load}
 
-在圖~\ref{CHsmall_load}~中我們看到一個宏~DeltaSectorNo~, 這個宏就是為了將~FAT~中的簇號轉換為磁區號。由于根目錄區的開始磁區號是~19~, 而~FAT~表的前兩個項~0,1~分別是磁盤識別字和被保留, 其表項其實是從第~2~項開始的, 第~2~項對應著根目錄區後的第一個磁區, 所以磁區號和簇號的對應關系就是：
+在圖~\ref{CHsmall_load}~中我們看到一個巨集~DeltaSectorNo~, 這個巨集就是為了將~FAT~中的簇號轉換為磁區號。由于根目錄區的開始磁區號是~19~, 而~FAT~表的前兩個項~0,1~分別是磁盤識別字和被保留, 其表項其實是從第~2~項開始的, 第~2~項對應著根目錄區後的第一個磁區, 所以磁區號和簇號的對應關系就是：
 
 \begin{align*}
 \mbox{磁區號}~&=~\mbox{簇號~+~根目錄區佔用磁區數~+~根目錄區開始磁區號~-~2}\\
