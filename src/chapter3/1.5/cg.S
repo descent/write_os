@@ -244,7 +244,11 @@ LABEL_SEG_CODE32:
 	jmp	.1
 .2:	# 顯示完畢
 
+  # call gate
   lcall $(SELECT_CG_TEST), $0
+
+  # the call gate setting selector
+  #lcall $(SELECT_CODE_CG), $0
   
   mov $(SelectorLDT), %ax
   lldt %ax
