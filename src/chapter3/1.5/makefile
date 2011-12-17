@@ -34,6 +34,12 @@ switch_vga_mode.com: switch_vga_mode.o
 	$(OBJCOPY) $(TRIM_FLAGS) switch_vga_mode.elf $@
 switch_vga_mode.o: switch_vga_mode.c config.h
 	gcc -nostdlib -nostartfiles -nodefaultlibs -c $<
+cg_to_r3.com: cg_to_r3.elf
+	$(OBJCOPY) $(TRIM_FLAGS) $< $@
+cg_to_r3.elf: cg_to_r3.o 
+	$(LD) -o $@ $(LDFLAGS_DOS) $^
+cg_to_r3.o: cg_to_r3.S
+	$(CC) $(CFLAGS) $<
 cg.com: cg.elf
 	$(OBJCOPY) $(TRIM_FLAGS) $< $@
 cg.elf: cg.o 
