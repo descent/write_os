@@ -301,9 +301,9 @@ LABEL_SEG_CODE32:
   # the call gate setting selector
   #lcall $(SELECT_CODE_CG), $0
   
-  mov $(SelectorLDT), %ax
-  lldt %ax
-  jmp $(SelectorLDTCodeA), $0
+#  mov $(SelectorLDT), %ax
+#  lldt %ax
+#  jmp $(SelectorLDTCodeA), $0
 
 
 /*
@@ -576,7 +576,13 @@ LABEL_CODE_CG:
   movb $'C', %al
 
   mov %ax, %gs:(%edi)
-  lret # long return command
+
+
+  mov $(SelectorLDT), %ax
+  lldt %ax
+  jmp $(SelectorLDTCodeA), $0
+
+  #lret # long return command
 .set SEG_CODE_CG_LEN, . - LABEL_CODE_CG
 LABEL_CODE_A:
 #if 0
