@@ -21,6 +21,7 @@
      RW   : Read/Write
      A    : Access */
 .set    DA_32,  0x4000  /* 32-bit segment */
+.set    DA_LIMIT_4K, 0x8000     /* 4K */
 
 /* Descriptor privilege level */
 .set    DA_DPL0,  0x00  /* DPL = 0 */
@@ -52,6 +53,13 @@
 .set    SA_RPL3, 3
 .set    SA_TIG,  0
 .set    SA_TIL,  4
+
+/* Page Attributes */
+.set    PG_P,    1
+.set    PG_RWR,  0
+.set    PG_RWW,  2
+.set    PG_USS,  0
+.set    PG_USU,  4
 
 /* MACROS */
 

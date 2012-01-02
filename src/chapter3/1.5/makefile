@@ -49,6 +49,13 @@ cg_to_r3.elf: cg_to_r3.o
 cg_to_r3.o: cg_to_r3.S
 	$(CC) $(CFLAGS) $<
 
+pt_1.com: pt_1.elf
+	$(OBJCOPY) $(TRIM_FLAGS) $< $@
+pt_1.elf: pt_1.o 
+	$(LD) -o $@ $(LDFLAGS_DOS) $^
+pt_1.o: pt_1.S pm.h
+	$(CC) $(CFLAGS) $<
+
 cg.com: cg.elf
 	$(OBJCOPY) $(TRIM_FLAGS) $< $@
 cg.elf: cg.o 
