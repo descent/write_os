@@ -56,6 +56,13 @@ pt_1.elf: pt_1.o
 pt_1.o: pt_1.S pm.h
 	$(CC) $(CFLAGS) $<
 
+pt_2.com: pt_2.elf
+	$(OBJCOPY) $(TRIM_FLAGS) $< $@
+pt_2.elf: pt_2.o 
+	$(LD) -o $@ $(LDFLAGS_DOS) $^
+pt_2.o: pt_2.S pm.h
+	$(CC) $(CFLAGS) $<
+
 cg.com: cg.elf
 	$(OBJCOPY) $(TRIM_FLAGS) $< $@
 cg.elf: cg.o 
