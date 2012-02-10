@@ -11,7 +11,7 @@
 \section{Hello OS world!}\label{hello_OS_world}
 
 \BOXED{0.9\textwidth}{
-\danger\\ 本章節內容需要和~gcc, make~相關的~Linux C~語言編程以及~PC~匯編語言的基礎知識。\enddanger
+\danger\\ 本章節內容需要和~gcc, make~相關的~Linux C~語言編程以及~PC~組合語言的基礎知識。\enddanger
 }
 
 \BOXED{0.9\textwidth}{
@@ -44,12 +44,12 @@ dw    0xaa55             ; 結束標志
 
 \subsection{Intel~語法轉化為~AT\&T(GAS)~語法}
 
-上面~boot.asm~中代碼使用~Intel~風格的匯編語言寫成, 本也可以在~Linux~下使用同樣開源的~NASM~編譯, 但是鑑于很少有人在~Linux~下使用此匯編語法, 它在~Linux~平台上的擴展性和可調試性都不好（~GCC~不兼容）, 而且不是採用~Linux~平台上編譯習慣, 所以我把它改成了使用~GNU~工具鏈去編譯連接。這樣的話, 對以後使用~GNU~工具鏈編寫其它體系結構的~bootloader~也有幫助, 畢竟~NASM~沒有~GAS~用戶多（也許~\smiley）。
+上面~boot.asm~中代碼使用~Intel~風格的組合語言寫成, 本也可以在~Linux~下使用同樣開源的~NASM~編譯, 但是鑑于很少有人在~Linux~下使用此組合語言語法, 它在~Linux~平台上的擴展性和可調試性都不好（~GCC~不兼容）, 而且不是採用~Linux~平台上編譯習慣, 所以我把它改成了使用~GNU~工具鏈去編譯連接。這樣的話, 對以後使用~GNU~工具鏈編寫其它體系結構的~bootloader~也有幫助, 畢竟~NASM~沒有~GAS~用戶多（也許~\smiley）。
 
-上面的匯編源程序可以改寫成~AT\&T~風格的匯編源代碼：
+上面的組合語言源程序可以改寫成~AT\&T~風格的組合語言原始碼：
 
 \begin{Codefrag}
-.code16               #使用16位模式匯編
+.code16               #使用16位模式組合語言
 .text                 #代碼段開始
     mov    %cs,%ax
     mov    %ax,%ds
@@ -73,7 +73,7 @@ BootMessage:.ascii "Hello, OS world!"
 
 \subsection{用~linker script~控制位址空間}
 
-但有一個問題,我們可以使用~\code{nasm boot.asm -o boot.bin}~命令將~boot.asm~直接編譯成二進制檔案, ~GAS~不能。不過~GAS~的不能恰好給開發者一個機會去分步地實現從匯編源代碼到二進制檔案這個過程, 使編譯更為靈活。下面請看~GAS~是如何通過~linker script~控制程序位址空間的：
+但有一個問題,我們可以使用~\code{nasm boot.asm -o boot.bin}~命令將~boot.asm~直接編譯成二進制檔案, ~GAS~不能。不過~GAS~的不能恰好給開發者一個機會去分步地實現從組合語言原始碼到二進制檔案這個過程, 使編譯更為靈活。下面請看~GAS~是如何通過~linker script~控制程序位址空間的：
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11]{../../src/chapter2/1/solrex_x86.ld}
 \codecaption{boot.S~的~linker script~(chapter2/1/solrex\_x86.ld)}\label{CHsmall_solrexLD}
@@ -118,7 +118,7 @@ dw    0xaa55             ; 結束標志
 
 \subsection{用~Makefile~編譯連接}
 
-下面的這個~Makefile~檔案, 就是我們用來自動編譯~boot.S~匯編源代碼的腳本檔案：
+下面的這個~Makefile~檔案, 就是我們用來自動編譯~boot.S~組合語言原始碼的腳本檔案：
 
 \begin{Codefrag}
 CC=gcc
@@ -499,7 +499,7 @@ DIR\_FileSize & 0x1c & 4  & 檔案大小 & 0x000000f\\
 
 \subsection{生成鏡像並測試} \label{CHsmall_test}
 
-我們寫好了匯編源代碼, 那麼就需要將源代碼編譯成可執行檔案, 並生成軟碟片鏡像了。
+我們寫好了組合語言原始碼, 那麼就需要將原始碼編譯成可執行檔案, 並生成軟碟片鏡像了。
 
 \VerbatimInput[fontfamily=tt,fontsize=\footnotesize,frame=lines, framerule=0.4mm, numbers=left, numbersep=3pt, tabsize=2, firstline=11, lastline=42]{../src/chapter2/2/Makefile}
 \codecaption{用~Makefile~編譯(節自 chapter2/2/Makefile)}\label{CHsmall_compile}
