@@ -31,6 +31,13 @@ boot.bin: boot.S
 	$(LD) boot.o -o boot.elf $(LDFLAGS_BOOT)
 	$(OBJCOPY) $(TRIM_FLAGS) boot.elf $@
 
+boot.com: boot.com.elf
+	$(OBJCOPY) $(TRIM_FLAGS) $< $@
+boot.com.elf: boot.com.o
+	$(LD) boot.o -o $@ $(LDFLAGS_DOS)
+boot.com.o: boot.S
+	$(CC) -o $@ -c boot.S
+
 LOADER.BIN: loader.S
 	$(CC) $(CFLAGS) loader.S
 	$(LD) loader.o -o loader.elf $(LDFLAGS_DOS)
