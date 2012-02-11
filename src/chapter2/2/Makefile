@@ -34,7 +34,7 @@ boot.bin: boot.S
 boot.com: boot.com.elf
 	$(OBJCOPY) $(TRIM_FLAGS) $< $@
 boot.com.elf: boot.com.o
-	$(LD) boot.o -o $@ $(LDFLAGS_DOS)
+	$(LD) $< -o $@ $(LDFLAGS_DOS)
 boot.com.o: boot.S
 	$(CC) -o $@ -c boot.S
 
