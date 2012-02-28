@@ -282,7 +282,7 @@ init_8259a:
   outb %al, $0x21
   call io_delay
 
-  out %al, $0x21
+  out %al, $0xa1
   call io_delay
 
   mov $0b11111110, %al
@@ -296,7 +296,7 @@ init_8259a:
   ret
 
 set_real_mode_8259a:
-  mov SelectorData, %ax
+  mov $SelectorData, %ax
   mov %ax, %fs
 
   mov $0x17, %al
