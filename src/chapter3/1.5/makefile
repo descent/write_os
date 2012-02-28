@@ -12,7 +12,7 @@ CC=gcc
 LD=ld
 OBJCOPY=objcopy
 
-CFLAGS=-c
+CFLAGS=-c -g
 TRIM_FLAGS=-R .pdr -R .comment -R.note -S -O binary
 #SCFLAGS=-fno-builtin -Wall -Wextra -nostdlib -nostartfiles -nodefaultlibs -Werror
 SCFLAGS=-fno-builtin -Wall -Wextra -nostdlib -nostartfiles -nodefaultlibs
@@ -97,6 +97,15 @@ k.s: k.c
 	gcc $(SCFLAGS) -S $<
 k.o: k.s
 	gcc $(SCFLAGS) -c $<
+
+idt.com: idt.com.elf
+	$(OBJCOPY) $(TRIM_FLAGS) $< $@
+idt.com.elf: idt.com.o
+	#$(LD) -o $@ $(LDFLAGS_DOS) $<
+	$(LD) -o $@ -Tdescent.ld $<
+idt.com.o: idt.S
+	$(CC) -o $@ $(CFLAGS) $<
+
 
 LOADER.BIN: loader.S
 	$(CC) $(CFLAGS) loader.S
