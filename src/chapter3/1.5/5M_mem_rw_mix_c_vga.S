@@ -139,7 +139,7 @@ LABEL_BEGIN:
                                     /* this calls far jump (ptr 16:32) in intel manual) */
 
 LABEL_REAL_ENTRY:               # 從保護模式跳回到實模式就到了這裡
-        mov     %cx, %ax
+        mov     %cs, %ax
         mov     %ax, %ds
         mov     %ax, %es
         mov     %ax, %ss
