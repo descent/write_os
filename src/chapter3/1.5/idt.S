@@ -508,7 +508,7 @@ Gate SelectorCode32, clock_handler_offset, 0, DA_386IGate # 0x20
 Gate SelectorCode32, spurious_handler_offset, 0, DA_386IGate
 .endr
 
-Gate SelectorCode32, clock_handler_offset, 0, DA_386IGate # 0x80
+Gate SelectorCode32, user_int_handler_offset, 0, DA_386IGate # 0x80
 
 .set idt_len, (. - LABEL_IDT)  /* IDT Length */
 
