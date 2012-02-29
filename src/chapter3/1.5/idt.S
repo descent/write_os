@@ -108,6 +108,13 @@ LABEL_BEGIN:
     add     $(LABEL_GDT), %eax      /* eax <- gdt base*/
     movl    %eax, (GdtPtr + 2)
 
+    /* Prepared for loading IDTR */
+    xor     %eax, %eax
+    mov     %ds, %ax
+    shl     $4, %eax
+    add     $(LABEL_IDT), %eax      /* eax <- idt base*/
+    movl    %eax, (idt_ptr + 2)
+
 #  movb $'Z', _SavedIDTR
 
 #  mov $0xb800,%ax
@@ -125,6 +132,7 @@ LABEL_BEGIN:
 
     /* Clear Interrupt Flags */
     cli
+    lidt idt_ptr
 
     /* Open A20 line. */
     inb     $0x92, %al
@@ -241,11 +249,37 @@ LABEL_SEG_CODE32:
     movb    $0xC, %ah               # 0000: Black Back 1100: Red Front 
     movb    $'8', %al
     mov     %ax, %gs:(%edi)
+
+    int $0x80
+    sti
+    jmp .
   call set_real_mode_8259a
 
     ljmpl     $SelectorCode16,$0
     # jmpl     $SelectorCode16,$0 # it works
 
+clock_handler:
+.set clock_handler_offset, (. - LABEL_SEG_CODE32)
+  incb %gs:((80 * 0 + 70) * 2) # (0, 70)
+  mov $0x20, %al
+  out %al, $0x20
+  iretl
+
+user_int_handler:
+.set user_int_handler_offset, (. - LABEL_SEG_CODE32)
+  mov $0xc, %ah
+  mov $'I', %al
+  mov %ax, %gs:((80 * 2 + 60) * 2) # (2, 60)
+  iretl
+
+
+spurious_handler:
+.set spurious_handler_offset, (. - LABEL_SEG_CODE32)
+  mov $0x0c, %ah
+  mov $'*', %al
+  mov %ax, %gs:((80 * 1 + 75) * 2) # (1, 75)
+  jmp .
+  iretl
 
 io_delay:
   nop
@@ -461,6 +495,26 @@ StrTest:                .ascii "ABCDEFGHIJKLMNOPQRSTUVWXYZ\0"
 LABEL_STACK:
 .space  512, 0
 .set    TopOfStack, (. - LABEL_STACK - 1)
+
+LABEL_IDT:
+.rept 32
+Gate SelectorCode32, spurious_handler_offset, 0, DA_386IGate
+.endr
+
+Gate SelectorCode32, clock_handler_offset, 0, DA_386IGate # 0x20
+#Gate SelectorCode32, spurious_handler_offset, 0, DA_386IGate
+
+.rept 95
+Gate SelectorCode32, spurious_handler_offset, 0, DA_386IGate
+.endr
+
+Gate SelectorCode32, clock_handler_offset, 0, DA_386IGate # 0x80
+
+.set idt_len, (. - LABEL_IDT)  /* IDT Length */
+
+idt_ptr: .2byte  (idt_len - 1)  /* IDT Limit */
+         .4byte  0             /* IDT Base */
+
 
 # END of [SECTION .data1]
 
