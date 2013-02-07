@@ -86,6 +86,13 @@ ldt.o: ldt.S
 5M_mem_rw.o: 5M_mem_rw.S
 	$(CC) $(CFLAGS) $<
 
+5mrwbr.com: 5M_mem_rw_big_real.o
+	$(LD) -o 5M_mem_rw.elf $(LDFLAGS_DOS) $^
+	$(OBJCOPY) $(TRIM_FLAGS) 5M_mem_rw.elf $@
+
+5M_mem_rw_big_real.o: 5M_mem_rw_big_real.S
+	$(CC) $(CFLAGS) $<
+
 5mc.com: 5M_mem_rw_mix_c.o k.o 
 	$(LD) -o 5mc.elf $(LDFLAGS_DOS) $^
 	$(OBJCOPY) $(TRIM_FLAGS) 5mc.elf $@
