@@ -26,10 +26,10 @@ boot.bin: boot.elf
 
 #boot.elf: boot.o k.o
 boot.elf: boot.o
-	$(LD) -o boot.elf -e c -Tsolrex_x86.ld $^
+	$(LD) -m elf_i386 -o boot.elf -e c -Tsolrex_x86.ld $^
 
 k.o: k.c
-	gcc -Wall -ffreestanding  -Wextra -Werror -nostdlib -nostartfiles -nodefaultlibs -c $<
+	gcc -m32 -Wall -ffreestanding  -Wextra -Werror -nostdlib -nostartfiles -nodefaultlibs -c $<
 
 boot.o: boot.s
 	$(CC) -c $<
@@ -40,11 +40,11 @@ bc.com: boot_mix_c.com.elf
 bc.bin: boot_mix_c.elf
 	$(OBJCOPY) -R .pdr -R .comment -R.note -S -O binary $< $@
 boot_mix_c.elf: boot_mix_c.o k.o
-	$(LD) -o boot_mix_c.elf -Tsolrex_x86.ld $^
+	$(LD) -m elf_i386 -o boot_mix_c.elf -Tsolrex_x86.ld $^
 boot_mix_c.com.elf: boot_mix_c.o k.o
-	$(LD) -o $@ -Tsolrex_x86_dos.ld $^
+	$(LD) -m elf_i386 -o $@ -Tsolrex_x86_dos.ld $^
 boot_mix_c.o: boot_mix_c.s
-	$(CC) -c $<
+	$(CC) -m32 -c $<
 
 copy: boot.img
 
